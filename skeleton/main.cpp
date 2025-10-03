@@ -10,6 +10,9 @@
 
 #include <iostream>
 
+#include "Axis.h"
+#include "Particle.h"
+
 std::string display_text = "Hola Mundo";
 
 
@@ -30,19 +33,9 @@ PxDefaultCpuDispatcher*	gDispatcher = NULL;
 PxScene*				gScene      = NULL;
 ContactReportCallback gContactReportCallback;
 
-std::vector<PxShape*> gShapes;
+std::vector<Particle*> gParticles;
+std::vector<physx::PxShape*> gShapes;
 std::vector<RenderItem*> gRenderItems;
-
-void createItem(PxTransform* transform, PxVec4 Color, PxShape* shape) {
-	RenderItem* newItem = new RenderItem(shape, transform, Color);
-	gRenderItems.push_back(newItem);
-}
-
-void createSphere(PxTransform* transform, PxVec4 Color) {
-	PxShape* newShape = CreateShape(PxSphereGeometry(1));
-	gShapes.push_back(newShape);
-	createItem(transform, Color, newShape);
-}
 
 // Initialize physics engine
 void initPhysics(bool interactive)
@@ -68,11 +61,8 @@ void initPhysics(bool interactive)
 	sceneDesc.simulationEventCallback = &gContactReportCallback;
 	gScene = gPhysics->createScene(sceneDesc);
 
-	// Reference Axis
-	createSphere(new PxTransform(0.f, 0.f, 0.f), PxVec4(255.f / 255.f, 255.f / 255.f, 255.f / 255.f, 1));
-	createSphere(new PxTransform(0.f, 0.f, 10.f), PxVec4(0 / 255.f, 0 / 255.f, 255 / 255.f, 1));
-	createSphere(new PxTransform(10.f, 0.f, 0.f), PxVec4(255 / 255.f, 0 / 255.f, 0 / 255.f, 1));
-	createSphere(new PxTransform(0.f, 10.f, 0.f), PxVec4(0 / 255.f, 255 / 255.f, 0 / 255.f, 1));
+	// Axis
+	Axis axis(10.f);
 }
 
 
@@ -104,7 +94,15 @@ void cleanupPhysics(bool interactive)
 	
 	gFoundation->release();
 
-	// Release RenderItems (we need to Deregister the RenderItem from the render too)
+	// Release Particles
+	for (Particle* particle : gParticles) {
+		if (particle) {
+			delete particle;
+		}
+	}
+	gParticles.clear();
+
+	// Release RenderItems (Deregister + delete)
 	for (RenderItem* item : gRenderItems) {
 		if (item) {
 			DeregisterRenderItem(item);
@@ -113,12 +111,12 @@ void cleanupPhysics(bool interactive)
 	}
 	gRenderItems.clear();
 
-	// Release Shapes de PhysX
-	for (PxShape* shape : gShapes) {
+	// Release Shapes de PhysX (release())
+	for (physx::PxShape* shape : gShapes) {
 		if (shape) shape->release();
 	}
 	gShapes.clear();
-	}
+}
 
 // Function called when a key is pressed
 void keyPress(unsigned char key, const PxTransform& camera)

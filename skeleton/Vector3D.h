@@ -2,6 +2,7 @@
 class Vector3D
 {
 public:
+	Vector3D();
 	Vector3D(int x, int y, int z);
 	~Vector3D();
 
@@ -27,8 +28,8 @@ public:
 	void set(int newX, int newY, int newZ);
 
 private:
-	int x;
-	int y;
-	int z;
+	int _x;
+	int _y;
+	int _z;
 };
 
