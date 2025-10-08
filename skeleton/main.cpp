@@ -63,6 +63,9 @@ void initPhysics(bool interactive)
 
 	// Axis
 	Axis axis(10.f);
+
+	// Particula
+	//Particle particle(Vector3D(0, 15, 0), Vector3D(0, 0, 0));
 }
 
 

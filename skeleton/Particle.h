@@ -3,7 +3,6 @@
 #include "Vector3D.h"
 #include <PxPhysicsAPI.h>
 #include "RenderUtils.hpp"
-#include <memory>
 
 using namespace physx;
 
@@ -16,7 +15,7 @@ public:
 	void integrate(double t);
 private:
 	Vector3D _vel;
-	std::unique_ptr<PxTransform> _tr;
-	std::unique_ptr<RenderItem> _renderItem;
+	PxTransform* _tr;
+	RenderItem* _renderItem;
 };
 

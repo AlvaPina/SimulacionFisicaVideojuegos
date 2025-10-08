@@ -1,15 +1,24 @@
 #include "Particle.h"
 
+extern std::vector<physx::PxShape*> gShapes;
+extern std::vector<RenderItem*> gRenderItems;
+extern std::vector<Particle*> gParticles;
+
 Particle::Particle(Vector3D pos, Vector3D vel)
 {
     _vel = vel;
     // Transform
-    _tr = std::make_unique <PxTransform>(physx::PxVec3(pos.getX(), pos.getY(), pos.getZ()));
+    _tr = new PxTransform(physx::PxVec3(pos.getX(), pos.getY(), pos.getZ()));
     // Render Item
-    _renderItem = std::make_unique<RenderItem>(CreateShape(PxSphereGeometry(1)), _tr.get(), PxVec4(0 / 255.f, 0 / 255.f, 255 / 255.f, 1));
+    _renderItem = new RenderItem(CreateShape(PxSphereGeometry(1)), _tr, PxVec4(0 / 255.f, 0 / 255.f, 255 / 255.f, 1));
+    gRenderItems.push_back(_renderItem);
+    // Añadimos la particula a nuestro vector de particulas
+    gParticles.push_back(this);
 }
 
-Particle::~Particle() = default;
+Particle::~Particle() {
+    delete _tr;
+}
 
 void Particle::integrate(double t)
 {
