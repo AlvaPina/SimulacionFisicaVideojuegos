@@ -6,7 +6,7 @@ Particle::Particle(Vector3D pos, Vector3D vel)
     // Transform
     _tr = std::make_unique <PxTransform>(physx::PxVec3(pos.getX(), pos.getY(), pos.getZ()));
     // Render Item
-    _renderItem = std::make_unique<RenderItem>(CreateShape(PxSphereGeometry(1)), _tr, PxVec4(0 / 255.f, 0 / 255.f, 255 / 255.f, 1));
+    _renderItem = std::make_unique<RenderItem>(CreateShape(PxSphereGeometry(1)), _tr.get(), PxVec4(0 / 255.f, 0 / 255.f, 255 / 255.f, 1));
 }
 
 Particle::~Particle() = default;
