@@ -1,4 +1,5 @@
 #include "Particle.h"
+#include <iostream>
 
 extern std::vector<physx::PxShape*> gShapes;
 extern std::vector<RenderItem*> gRenderItems;
@@ -18,6 +19,7 @@ Particle::Particle(Vector3D pos, Vector3D vel)
 
 Particle::~Particle() {
     delete _tr;
+    // todos los _renderItem ya se borran en el main
 }
 
 void Particle::integrate(double t)
@@ -26,7 +28,9 @@ void Particle::integrate(double t)
     Vector3D gravity(0.0, -9.81, 0.0);
 
     // Actualiza la velocidad (Euler semi-implícito)
-    _vel = _vel + gravity.scalarMul(t);
+    Vector3D velInc = gravity.scalarMul(t);
+    _vel = _vel + velInc;
+    std::cout << _vel.getX() << _vel.getY() << _vel.getZ() << " ";
 
     // calcular nueva pos
     Vector3D pos = Vector3D(_tr->p.x, _tr->p.y, _tr->p.z);
@@ -34,4 +38,5 @@ void Particle::integrate(double t)
 
     // Actualiza la Transform de PhysX
     _tr->p = PxVec3(pos.getX(), pos.getY(), pos.getZ());
+    //std::cout << _tr->p.x << " " << _tr->p.y << _tr->p.z;
 }

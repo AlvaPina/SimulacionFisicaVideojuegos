@@ -17,11 +17,7 @@ Axis::Axis(float size)
 
     // Z (azul)
     createSphere(PxTransform(PxVec3(0.f, 0.f, size)), PxVec4(0.f, 0.f, 1.f, 1.f),size);
-}
-
-Axis::~Axis()
-{
-    delete _tr;
+    
 }
 
 void Axis::createSphere(const physx::PxTransform& transform, const physx::PxVec4& color, float size)
@@ -29,8 +25,6 @@ void Axis::createSphere(const physx::PxTransform& transform, const physx::PxVec4
     PxShape* shape = CreateShape(PxSphereGeometry(size * 0.1));
     gShapes.push_back(shape);
 
-    _tr = new PxTransform(transform);
-
-    RenderItem* item = new RenderItem(shape, _tr, color);
+    RenderItem* item = new RenderItem(shape, new PxTransform(transform), color);
     gRenderItems.push_back(item);
 }

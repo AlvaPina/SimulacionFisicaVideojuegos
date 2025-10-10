@@ -65,7 +65,7 @@ void initPhysics(bool interactive)
 	Axis axis(10.f);
 
 	// Particula
-	//Particle particle(Vector3D(0, 15, 0), Vector3D(0, 0, 0));
+	Particle* particle = new Particle(Vector3D(0, 15, 0), Vector3D(0, 0, 0));
 }
 
 
@@ -78,6 +78,14 @@ void stepPhysics(bool interactive, double t)
 
 	gScene->simulate(t);
 	gScene->fetchResults(true);
+
+	// Actualizamos particulas
+	for (Particle* particle : gParticles) {
+		if (particle) {
+			//std::cout << "integrate";
+			particle->integrate(t);
+		}
+	}
 }
 
 // Function to clean data
