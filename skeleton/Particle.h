@@ -13,9 +13,13 @@ public:
 	~Particle();
 
 	void integrate(double t);
+	void addAcceleration(Vector3D acceleration);
 private:
 	Vector3D _vel;
+	Vector3D _aceleration;
 	PxTransform* _tr;
 	RenderItem* _renderItem;
+
+	double _damping = 0.01f;
 };
 
