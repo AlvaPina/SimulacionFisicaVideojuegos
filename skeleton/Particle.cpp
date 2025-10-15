@@ -14,9 +14,6 @@ Particle::Particle(Vector3D iniPos, Vector3D iniVel, Vector3D iniAcceleration, d
     // Render Item
     _renderItem = new RenderItem(CreateShape(PxSphereGeometry(1)), _tr, PxVec4(0 / 255.f, 0 / 255.f, 255 / 255.f, 1));
     gRenderItems.push_back(_renderItem);
-    // Añadimos gravedad a la particula
-    Vector3D gravity(0.0, -9.81, 0.0);
-    addAcceleration(gravity);
     // Añadimos la particula a nuestro vector de particulas
     gParticles.push_back(this);
 }
@@ -28,6 +25,12 @@ Particle::~Particle() {
 
 void Particle::integrate(double t, int type) // 0: euler semi-implicito, 1: euler explicito
 {
+	//Incluye la gravedad
+	if (_gravity) addForce(Vector3D(0.0, _mass * _gravityValue, 0.0)); // F = m·g
+
+    //Calcula la aceleración a partir de las fuerzas acumuladas
+    _aceleration = _forceAccum.scalarMul(1.0 / _mass);
+
     Vector3D pos(_tr->p.x, _tr->p.y, _tr->p.z);
     switch (type) {
     case 0: // Euler semi-implícito
@@ -60,9 +63,21 @@ void Particle::integrate(double t, int type) // 0: euler semi-implicito, 1: eule
 
     // Actualiza la Transform de PhysX
     _tr->p = PxVec3(pos.getX(), pos.getY(), pos.getZ());
+    // limpiar acumulador de fuerzas
+    crealForceAccumulator();
 }
 
-void Particle::addAcceleration(Vector3D acceleration)
+void Particle::addForce(Vector3D force)
 {
-    _aceleration = _aceleration + acceleration;
+    _forceAccum = _forceAccum + force;
+}
+
+void Particle::setGravity(bool value)
+{
+	_gravity = value;
+}
+
+void Particle::crealForceAccumulator()
+{
+	_forceAccum = Vector3D(0.0, 0.0, 0.0);
 }
