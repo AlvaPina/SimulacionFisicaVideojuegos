@@ -5,11 +5,11 @@ extern std::vector<physx::PxShape*> gShapes;
 extern std::vector<RenderItem*> gRenderItems;
 extern std::vector<Particle*> gParticles;
 
-Particle::Particle(Vector3D iniPos, Vector3D iniVel, Vector3D iniAcceleration, double iniMass)
+Particle::Particle(Vector3D iniPos, Vector3D iniVel, double iniMass)
 {
     _vel = iniVel;
     _tr = new PxTransform(physx::PxVec3(iniPos.getX(), iniPos.getY(), iniPos.getZ()));
-    _aceleration = iniAcceleration;
+    _aceleration = Vector3D(0,0,0);
     _mass = iniMass;
     // Render Item
     _renderItem = new RenderItem(CreateShape(PxSphereGeometry(1)), _tr, PxVec4(0 / 255.f, 0 / 255.f, 255 / 255.f, 1));
@@ -64,7 +64,7 @@ void Particle::integrate(double t, int type) // 0: euler semi-implicito, 1: eule
     // Actualiza la Transform de PhysX
     _tr->p = PxVec3(pos.getX(), pos.getY(), pos.getZ());
     // limpiar acumulador de fuerzas
-    crealForceAccumulator();
+    clearForceAccumulator();
 }
 
 void Particle::addForce(Vector3D force)
@@ -77,7 +77,7 @@ void Particle::setGravity(bool value)
 	_gravity = value;
 }
 
-void Particle::crealForceAccumulator()
+void Particle::clearForceAccumulator()
 {
 	_forceAccum = Vector3D(0.0, 0.0, 0.0);
 }

@@ -9,7 +9,7 @@ using namespace physx;
 class Particle
 {
 public:
-	Particle(Vector3D iniPos, Vector3D iniVel, Vector3D iniAcceleration, double iniMass);
+	Particle(Vector3D iniPos, Vector3D iniVel, double iniMass);
 	~Particle();
 
 	void integrate(double t, int type = 0);
@@ -29,6 +29,6 @@ private:
 
 	bool _gravity = true;
 
-	void crealForceAccumulator();
+	void clearForceAccumulator();
 };
 

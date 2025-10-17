@@ -65,7 +65,7 @@ void initPhysics(bool interactive)
 	Axis axis(10.f);
 
 	// Particula
-	Particle* particle = new Particle(Vector3D(0, 15, 0), Vector3D(0, 0, 0), Vector3D(0, 0, 0), 1.0f);
+	Particle* particle = new Particle(Vector3D(0, 15, 0), Vector3D(0, 0, 0), 1.0f);
 }
 
 
@@ -136,10 +136,17 @@ void keyPress(unsigned char key, const PxTransform& camera)
 
 	switch(toupper(key))
 	{
-	//case 'B': break;
-	//case ' ':	break;
-	case ' ':
-	{
+	case 'B': {
+		std::cout << "camera.q = ("
+			<< camera.q.x << ", "
+			<< camera.q.y << ", "
+			<< camera.q.z << ")"
+			<< std::endl;
+		Particle* particle = new Particle(Vector3D(camera.p.x, camera.p.y, camera.p.z), Vector3D(camera.q.x * 10, camera.q.y * 10, camera.q.z * 10), 1.0f);
+		particle->setGravity(false);
+		break;
+	}
+	case ' ': {
 		break;
 	}
 	default:
