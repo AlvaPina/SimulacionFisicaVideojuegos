@@ -142,7 +142,8 @@ void keyPress(unsigned char key, const PxTransform& camera)
 			<< camera.q.y << ", "
 			<< camera.q.z << ")"
 			<< std::endl;
-		Particle* particle = new Particle(Vector3D(camera.p.x, camera.p.y, camera.p.z), Vector3D(camera.q.x * 10, camera.q.y * 10, camera.q.z * 10), 1.0f);
+		Vector3D forward = camera.q.rotate(PxVec3(0, 0, -1));
+		Particle* particle = new Particle(Vector3D(camera.p.x, camera.p.y, camera.p.z), forward, 1.0f);
 		particle->setGravity(false);
 		break;
 	}

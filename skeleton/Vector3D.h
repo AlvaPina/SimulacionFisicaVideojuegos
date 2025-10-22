@@ -1,9 +1,15 @@
 #pragma once
+
+#include "PxPhysicsAPI.h"
+
+using namespace physx;
+
 class Vector3D
 {
 public:
 	Vector3D();
 	Vector3D(double x, double y, double z);
+	Vector3D(const PxVec3& vec);
 	~Vector3D();
 
 	Vector3D normalice();

@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iostream>
 
+
 Vector3D::Vector3D()
 {
     _x = 0;
@@ -14,6 +15,12 @@ Vector3D::Vector3D(double x, double y, double z)
     _x = x;
     _y = y;
     _z = z;
+}
+
+
+Vector3D::Vector3D(const PxVec3& vec)
+    : _x(vec.x), _y(vec.y), _z(vec.z)
+{
 }
 
 Vector3D::~Vector3D()
