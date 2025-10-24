@@ -33,6 +33,15 @@ public:
 	void setZ(double value);
 	void set(double newX, double newY, double newZ);
 
+	// Direcciones comunes
+	static const Vector3D UP;
+	static const Vector3D DOWN;
+	static const Vector3D RIGHT;
+	static const Vector3D LEFT;
+	static const Vector3D FORWARD;
+	static const Vector3D BACK;
+	static const Vector3D ZERO;
+
 private:
 	double _x;
 	double _y;

@@ -14,6 +14,8 @@
     <ClCompile Include="Vector3D.cpp" />
     <ClCompile Include="Axis.cpp" />
     <ClCompile Include="globals.cpp" />
+    <ClCompile Include="ParticleGenerator.cpp" />
+    <ClCompile Include="Vector2D.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core.hpp" />
@@ -29,6 +31,8 @@
     <ClInclude Include="Vector3D.h" />
     <ClInclude Include="Axis.h" />
     <ClInclude Include="globals.h" />
+    <ClInclude Include="ParticleGenerator.h" />
+    <ClInclude Include="Vector2D.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Render">

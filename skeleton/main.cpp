@@ -11,7 +11,8 @@
 #include <iostream>
 
 #include "Axis.h"
-#include "Particle.h"
+#include "ParticleGenerator.h"
+#include "Vector2D.h"
 
 std::string display_text = "Hola Mundo";
 
@@ -33,7 +34,7 @@ PxDefaultCpuDispatcher*	gDispatcher = NULL;
 PxScene*				gScene      = NULL;
 ContactReportCallback gContactReportCallback;
 
-std::vector<Particle*> gParticles;
+std::vector<ParticleGenerator*> gParticleGenerators;
 std::vector<physx::PxShape*> gShapes;
 std::vector<RenderItem*> gRenderItems;
 
@@ -65,7 +66,9 @@ void initPhysics(bool interactive)
 	Axis axis(10.f);
 
 	// Particula
-	Particle* particle = new Particle(Vector3D(0, 15, 0), Vector3D(0, 0, 0), 1.0f);
+	Vector2D spreadAngle = Vector2D(30, 30);
+	Vector2D orientation = Vector2D::UP;
+	ParticleGenerator* generador = new ParticleGenerator(10, spreadAngle, orientation);
 }
 
 
@@ -79,11 +82,11 @@ void stepPhysics(bool interactive, double t)
 	gScene->simulate(t);
 	gScene->fetchResults(true);
 
-	// Actualizamos particulas
-	for (Particle* particle : gParticles) {
-		if (particle) {
+	// Actualizamos generadores particulas
+	for (ParticleGenerator* generator : gParticleGenerators) {
+		if (generator) {
 			//std::cout << "integrate";
-			particle->integrate(t);
+			generator->update(t);
 		}
 	}
 }
@@ -105,13 +108,13 @@ void cleanupPhysics(bool interactive)
 	
 	gFoundation->release();
 
-	// Release Particles
-	for (Particle* particle : gParticles) {
-		if (particle) {
-			delete particle;
+	// Release Particles Generators
+	for (ParticleGenerator* generator : gParticleGenerators) {
+		if (generator) {
+			delete generator;
 		}
 	}
-	gParticles.clear();
+	gParticleGenerators.clear();
 
 	// Release RenderItems (Deregister + delete)
 	for (RenderItem* item : gRenderItems) {

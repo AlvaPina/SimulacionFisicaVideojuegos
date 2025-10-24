@@ -3,7 +3,6 @@
 
 extern std::vector<physx::PxShape*> gShapes;
 extern std::vector<RenderItem*> gRenderItems;
-extern std::vector<Particle*> gParticles;
 
 Particle::Particle(Vector3D iniPos, Vector3D iniVel, double iniMass)
 {
@@ -14,8 +13,6 @@ Particle::Particle(Vector3D iniPos, Vector3D iniVel, double iniMass)
     // Render Item
     _renderItem = new RenderItem(CreateShape(PxSphereGeometry(1)), _tr, PxVec4(0 / 255.f, 0 / 255.f, 255 / 255.f, 1));
     gRenderItems.push_back(_renderItem);
-    // Añadimos la particula a nuestro vector de particulas
-    gParticles.push_back(this);
 }
 
 Particle::~Particle() {

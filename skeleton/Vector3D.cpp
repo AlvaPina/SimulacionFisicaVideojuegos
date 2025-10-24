@@ -77,3 +77,12 @@ void Vector3D::setX(double value) { _x = value; }
 void Vector3D::setY(double value) { _y = value; }
 void Vector3D::setZ(double value) { _z = value; }
 void Vector3D::set(double newX, double newY, double newZ) { _x = newX; _y = newY; _z = newZ; }
+
+// Definición de las constantes direccionales
+const Vector3D Vector3D::UP(0.0, 1.0, 0.0);
+const Vector3D Vector3D::DOWN(0.0, -1.0, 0.0);
+const Vector3D Vector3D::RIGHT(1.0, 0.0, 0.0);
+const Vector3D Vector3D::LEFT(-1.0, 0.0, 0.0);
+const Vector3D Vector3D::FORWARD(0.0, 0.0, 1.0);
+const Vector3D Vector3D::BACK(0.0, 0.0, -1.0);
+const Vector3D Vector3D::ZERO(0.0, 0.0, 0.0);
