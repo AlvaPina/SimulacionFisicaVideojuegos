@@ -1,6 +1,8 @@
 #pragma once
-#include "Particle.h"
 #include "Vector2D.h"
+#include <vector>
+
+class Particle;
 
 enum GeneratorType {
 	SMOKE,
@@ -15,6 +17,13 @@ public:
 
 	void setActive(bool value);
 	void update(double deltaTime);
+
+	void setAverageSpeed(double v) { averageSpeed_ = v;  speedNormal_ = std::normal_distribution<double>(averageSpeed_, gaussianFactor_); }
+	void setGaussianFactor(double s) { gaussianFactor_ = s; speedNormal_ = std::normal_distribution<double>(averageSpeed_, gaussianFactor_); }
+	void setLifeTime(double seconds) { lifeTime_ = seconds; }
+	void setSpawnPosition(const Vector3D& p) { spawnPos_ = p; }
+	void setEmitRate(int perSec) { emitRate_ = perSec > 0 ? perSec : 1; }
+	void clear(); // elimina todas las partículas del generador
 private:
 	bool _enabled;
 	int _particlesPerSecond;

@@ -12,8 +12,9 @@
 
 #include "Axis.h"
 #include "ParticleGenerator.h"
+#include "Particle.h"
 #include "Vector2D.h"
-
+#include "Vector3D.h"
 std::string display_text = "Hola Mundo";
 
 
@@ -34,6 +35,7 @@ PxDefaultCpuDispatcher*	gDispatcher = NULL;
 PxScene*				gScene      = NULL;
 ContactReportCallback gContactReportCallback;
 
+std::vector<Particle*> gParticles;
 std::vector<ParticleGenerator*> gParticleGenerators;
 std::vector<physx::PxShape*> gShapes;
 std::vector<RenderItem*> gRenderItems;
@@ -82,6 +84,13 @@ void stepPhysics(bool interactive, double t)
 	gScene->simulate(t);
 	gScene->fetchResults(true);
 
+	// Actualizamos particulas
+	for (Particle* particle : gParticles) {
+		if (particle) {
+			//std::cout << "integrate";
+			particle->integrate(t);
+		}
+	}
 	// Actualizamos generadores particulas
 	for (ParticleGenerator* generator : gParticleGenerators) {
 		if (generator) {
@@ -107,6 +116,14 @@ void cleanupPhysics(bool interactive)
 	transport->release();
 	
 	gFoundation->release();
+
+	// Release Particles
+	for (Particle* particle : gParticles) {
+		if (particle) {
+			delete particle;
+		}
+	}
+	gParticles.clear();
 
 	// Release Particles Generators
 	for (ParticleGenerator* generator : gParticleGenerators) {
@@ -146,8 +163,11 @@ void keyPress(unsigned char key, const PxTransform& camera)
 			<< camera.q.z << ")"
 			<< std::endl;
 		Vector3D forward = camera.q.rotate(PxVec3(0, 0, -1));
-		Particle* particle = new Particle(Vector3D(camera.p.x, camera.p.y, camera.p.z), forward, 1.0f);
+		Vector3D iniPos = Vector3D(camera.p.x, camera.p.y, camera.p.z);
+		float iniVel = 10.0f;
+		Particle* particle = new Particle(iniPos, forward.scalarMul(iniVel), 1.0f);
 		particle->setGravity(false);
+		gParticles.push_back(particle);
 		break;
 	}
 	case ' ': {

@@ -1,4 +1,5 @@
 #include "ParticleGenerator.h"
+#include "Particle.h"
 
 ParticleGenerator::ParticleGenerator(int particlesPerSecond, Vector2D spreadAngle, Vector2D orientation)
 	: _enabled(true),
@@ -34,7 +35,7 @@ void ParticleGenerator::update(double deltaTime)
 	}
 	// Comprobamos si ha pasado el tiempo necesario para generar particula
 	_accumulatedTime += deltaTime;
-	if (_accumulatedTime < 1000 / _particlesPerSecond) return;
+	if (_accumulatedTime < 1000.0f / _particlesPerSecond) return;
 }
 
 void ParticleGenerator::generateParticle()
