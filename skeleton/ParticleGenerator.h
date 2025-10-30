@@ -1,39 +1,64 @@
-#pragma once
-#include "Vector2D.h"
+Ôªø#pragma once
 #include <vector>
+#include <random>
+#include "Vector2D.h"
+#include "Vector3D.h"
 
 class Particle;
 
 enum GeneratorType {
-	SMOKE,
-	FIRE,
+    SMOKE,
+    FIRE,
 };
 
 class ParticleGenerator
 {
 public:
-	ParticleGenerator(int particlesPerSecond, Vector2D spreadAngle, Vector2D orientation);
-	~ParticleGenerator();
+    // particlesPerSecond: cu√°ntas por segundo
+    // spreadAngle: (yawDegRange, pitchDegRange) en grados
+    // orientation: direcci√≥n base (3D, se normaliza internamente)
+    // spawnPos: posici√≥n del emisor
+    ParticleGenerator(int particlesPerSecond, Vector2D spreadAngle, Vector3D orientation, Vector3D spawnPos);
+    ~ParticleGenerator();
 
-	void setActive(bool value);
-	void update(double deltaTime);
+    void setActive(bool value);
+    void update(double deltaTime); // segundos
 
-	void setAverageSpeed(double v) { averageSpeed_ = v;  speedNormal_ = std::normal_distribution<double>(averageSpeed_, gaussianFactor_); }
-	void setGaussianFactor(double s) { gaussianFactor_ = s; speedNormal_ = std::normal_distribution<double>(averageSpeed_, gaussianFactor_); }
-	void setLifeTime(double seconds) { lifeTime_ = seconds; }
-	void setSpawnPosition(const Vector3D& p) { spawnPos_ = p; }
-	void setEmitRate(int perSec) { emitRate_ = perSec > 0 ? perSec : 1; }
-	void clear(); // elimina todas las partÌculas del generador
+    // setters sencillos
+    void setAverageSpeed(double v) { averageSpeed_ = v;  speedNormal_ = std::normal_distribution<double>(averageSpeed_, gaussianFactor_); }
+    void setGaussianFactor(double s) { gaussianFactor_ = s; speedNormal_ = std::normal_distribution<double>(averageSpeed_, gaussianFactor_); }
+    void setLifeTime(double seconds) { lifeTime_ = seconds; }
+    void setSpawnPosition(const Vector3D& p) { spawnPos_ = p; }
+    void setEmitRate(int perSec) { emitRate_ = perSec > 0 ? perSec : 1; }
+    void clear();
+
 private:
-	bool _enabled;
-	int _particlesPerSecond;
-	Vector2D _spreadAngle; // Rango de angulos posibles con los que sale la particula disparada.
-						   // Rango desde (0∫,0∫) hasta (180∫,180∫)
-	Vector2D _orientation; // Direccion a la que sale la particula disparada
+    // Estado y par√°metros
+    bool      isActive_ = true;
+    int       emitRate_ = 10; // part√≠culas/seg
+    Vector2D  spreadAngle_; // (yaw,pitch) en grados (rangos)
+    Vector3D  facingDir_; // direcci√≥n base 3D
+    double    elapsed_ = 0.0; // tiempo acumulado (s)
 
-	double _accumulatedTime = 0.0; // tiempo acumulado para generar partÌculas
-	std::vector<Particle*> _particles;
+    // Part√≠culas propias del generador
+    std::vector<Particle*> particles_;
+    std::vector<double>    lifeLeft_; // vida restante (s)
 
-	void generateParticle();
+    // Par√°metros de emisi√≥n
+    double    averageSpeed_ = 10.0; // m/s
+    double    gaussianFactor_ = 2.0; // sigma velocidad (m/s)
+    double    lifeTime_ = 5.0; // s
+    Vector3D  spawnPos_ = Vector3D(0, 0, 0);
+
+    // RNG
+    std::mt19937 rng_;
+    std::normal_distribution<double>      speedNormal_;
+    std::uniform_real_distribution<double> uniform01_{ 0.0, 1.0 }; // ‚àà[0,1)
+
+    // Utilidades
+    void emitOne();
+    Vector3D randomDirectionWithSpread();
+    static double deg2rad(double d) { return d * 3.14159265358979323846 / 180.0; }
+    static void dirToYawPitchDeg(const Vector3D& d, double& yawDeg, double& pitchDeg);
+    static Vector3D dirFromYawPitchDeg(double yawDeg, double pitchDeg);
 };
-

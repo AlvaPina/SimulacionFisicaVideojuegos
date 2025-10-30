@@ -27,7 +27,7 @@ Vector3D::~Vector3D()
 {
 }
 
-Vector3D Vector3D::normalice()
+Vector3D Vector3D::normalized() const
 {
     double magnitude =  std::sqrt(_x * _x + _y * _y + _z * _z);
     if (magnitude == 0) return Vector3D(0, 0, 0);
@@ -39,7 +39,12 @@ Vector3D Vector3D::scalarMul(double scalar)
     return Vector3D(_x * scalar, _y * scalar, _z * scalar);
 }
 
-Vector3D Vector3D::scalarMul(const Vector3D& other)
+double Vector3D::scalarProduct(const Vector3D& other) const
+{
+    return _x * other._x + _y * other._y + _z * other._z;
+}
+
+Vector3D Vector3D::vectorialProduct(const Vector3D& other) const
 {
     return Vector3D(_x * other._x, _y * other._y, _z * other._z);
 }

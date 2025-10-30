@@ -12,9 +12,11 @@ public:
 	Vector3D(const PxVec3& vec);
 	~Vector3D();
 
-	Vector3D normalice();
+	Vector3D normalized() const;
 	Vector3D scalarMul(double scalar);
-	Vector3D scalarMul(const Vector3D& other);
+
+	double   scalarProduct(const Vector3D& other) const;
+	Vector3D vectorialProduct(const Vector3D& other) const;
 	
 	// Sobrecargas
 	Vector3D& operator=(const Vector3D& other);

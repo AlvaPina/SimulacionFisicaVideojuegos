@@ -69,8 +69,13 @@ void initPhysics(bool interactive)
 
 	// Particula
 	Vector2D spreadAngle = Vector2D(30, 30);
-	Vector2D orientation = Vector2D::UP;
-	ParticleGenerator* generador = new ParticleGenerator(10, spreadAngle, orientation);
+	Vector3D orientation = Vector3D::UP;
+	Vector3D spawnPos = Vector3D(0, 5, 0);
+	ParticleGenerator* generador = new ParticleGenerator(10, spreadAngle, orientation, spawnPos);
+	generador->setAverageSpeed(5.0);
+	generador->setGaussianFactor(1.0);
+	generador->setLifeTime(5.0);
+	gParticleGenerators.push_back(generador);
 }
 
 
