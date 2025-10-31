@@ -57,6 +57,7 @@ private:
 
     // Utilidades
     void emitOne();
+	void calculateForcesOnParticle(Particle* p, double dt);
     Vector3D randomDirectionWithSpread();
     static double deg2rad(double d) { return d * 3.14159265358979323846 / 180.0; }
     static void dirToYawPitchDeg(const Vector3D& d, double& yawDeg, double& pitchDeg);

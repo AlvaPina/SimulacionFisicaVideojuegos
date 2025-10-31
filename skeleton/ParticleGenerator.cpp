@@ -100,10 +100,14 @@ void ParticleGenerator::emitOne()
 
     // Crear partícula
     Particle* p = new Particle(spawnPos_, vel, /*mass*/1.0);
-    p->setGravity(true);
 
     particles_.push_back(p);
     lifeLeft_.push_back(lifeTime_);
+}
+
+// Este metodo mirara que generadores de fuerza afectan a la particula y aplicara las fuerzas correspondientes
+void ParticleGenerator::calculateForcesOnParticle(Particle* p, double dt)
+{
 }
 
 // ---------- METODOS AXULIARES Conversión dir <-> yaw/pitch (grados) ----------

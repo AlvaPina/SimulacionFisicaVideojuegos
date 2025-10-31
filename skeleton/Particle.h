@@ -3,6 +3,8 @@
 #include "Vector3D.h"
 #include <PxPhysicsAPI.h>
 #include "RenderUtils.hpp"
+#include "ForceGenerator.h"
+#include <vector>
 
 using namespace physx;
 
@@ -13,8 +15,7 @@ public:
 	~Particle();
 
 	void integrate(double t, int type = 0);
-	void addForce(Vector3D force);
-	void setGravity(bool value);
+	void addForce(Vector3D force); // Con este su generador le aplica fuerzas
 private:
 	Vector3D _vel;
 	Vector3D _aceleration;
@@ -25,9 +26,6 @@ private:
 
 	double _damping = 0.00001f;
 	double _mass = 1.0f;
-	double _gravityValue = -9.81;
-
-	bool _gravity = true;
 
 	void clearForceAccumulator();
 };

@@ -22,9 +22,6 @@ Particle::~Particle() {
 
 void Particle::integrate(double t, int type) // 0: euler semi-implicito, 1: euler explicito
 {
-	//Incluye la gravedad
-	if (_gravity) addForce(Vector3D(0.0, _mass * _gravityValue, 0.0)); // F = m·g
-
     //Calcula la aceleración a partir de las fuerzas acumuladas
     _aceleration = _forceAccum.scalarMul(1.0 / _mass);
 
@@ -67,11 +64,6 @@ void Particle::integrate(double t, int type) // 0: euler semi-implicito, 1: eule
 void Particle::addForce(Vector3D force)
 {
     _forceAccum = _forceAccum + force;
-}
-
-void Particle::setGravity(bool value)
-{
-	_gravity = value;
 }
 
 void Particle::clearForceAccumulator()
