@@ -171,7 +171,6 @@ void keyPress(unsigned char key, const PxTransform& camera)
 		Vector3D iniPos = Vector3D(camera.p.x, camera.p.y, camera.p.z);
 		float iniVel = 10.0f;
 		Particle* particle = new Particle(iniPos, forward.scalarMul(iniVel), 1.0f);
-		particle->setGravity(false);
 		gParticles.push_back(particle);
 		break;
 	}

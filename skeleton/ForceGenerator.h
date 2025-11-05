@@ -1,18 +1,15 @@
 #pragma once
-#include "Vector3D.h"
-
-class ForceGenerator
-{
+class RigidBody;
+class ForceGenerator {
 public:
-	ForceGenerator();
-	~ForceGenerator();
-	void setActive(bool value) { isActive_ = value; }
-private:
-	bool isActive_;
-	bool isZoneBased_;
-	Vector3D zone_;
+    virtual ~ForceGenerator() = default;
+    void setActive(bool v) { active_ = v; }
+    bool isActive() const { return active_; }
 
-	// Fuerzas
-	virtual void applyForce(class Particle* p, double dt) = 0; // a futuro en vez de la particula se le puede pasar un GameObject
+    // Aplica fuerza al objeto durante dt (seg)
+    virtual void apply(RigidBody& body, double dt) = 0;
+
+protected:
+    bool active_ = true;
 };
 
