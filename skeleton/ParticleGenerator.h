@@ -3,6 +3,7 @@
 #include <random>
 #include "Vector2D.h"
 #include "Vector3D.h"
+#include "ForceRegistry.h"
 
 class Particle;
 
@@ -30,6 +31,11 @@ public:
     void setLifeTime(double seconds) { lifeTime_ = seconds; }
     void setSpawnPosition(const Vector3D& p) { spawnPos_ = p; }
     void setEmitRate(int perSec) { emitRate_ = perSec > 0 ? perSec : 1; }
+
+    // Fuerzas
+    void setForceRegistry(ForceRegistry* r) { registry_ = r; }
+    void addGlobalForce(ForceGenerator* fg) { forces_.push_back(fg); }
+
     void clear();
 
 private:
@@ -54,6 +60,10 @@ private:
     std::mt19937 rng_;
     std::normal_distribution<double>      speedNormal_;
     std::uniform_real_distribution<double> uniform01_{ 0.0, 1.0 }; // ∈[0,1)
+
+	// Fuerzas
+    ForceRegistry* registry_ = nullptr;
+    std::vector<ForceGenerator*> forces_;
 
     // Utilidades
     void emitOne();

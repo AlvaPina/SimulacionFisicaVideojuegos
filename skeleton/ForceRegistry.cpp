@@ -1,4 +1,6 @@
 #include "ForceRegistry.h"
+#include "RigidBody.h"
+#include "ForceGenerator.h"
 
 void ForceRegistry::add(RigidBody* body, ForceGenerator* fg)
 {
@@ -13,5 +15,9 @@ void ForceRegistry::clearFor(RigidBody* body)
 
 void ForceRegistry::update(double dt)
 {
-	
+	for (auto& pr : pairs_) {
+		RigidBody* body = pr.first;
+		ForceGenerator* fg = pr.second;
+		if (body && fg && fg->isActive()) fg->apply(*body, dt);
+	}
 }

@@ -61,7 +61,22 @@ void Particle::integrate(double t, int type) // 0: euler semi-implicito, 1: eule
     clearForceAccumulator();
 }
 
-void Particle::addForce(Vector3D force)
+double Particle::getMass() const
+{
+    return _mass;
+}
+
+Vector3D Particle::getPosition() const
+{
+    return Vector3D(_tr->p.x, _tr->p.y, _tr->p.z);
+}
+
+Vector3D Particle::getVelocity() const
+{
+    return _vel;
+}
+
+void Particle::addForce(const Vector3D& force)
 {
     _forceAccum = _forceAccum + force;
 }

@@ -23,6 +23,13 @@ ParticleGenerator::~ParticleGenerator()
 
 void ParticleGenerator::clear()
 {
+    // Desregistrar todas las partículas vivas antes de borrarlas
+    if (registry_) {
+        for (auto* p : particles_) {
+            if (p) registry_->clearFor(p);
+        }
+    }
+
     for (auto* p : particles_) delete p;
     particles_.clear();
     lifeLeft_.clear();
@@ -37,6 +44,8 @@ void ParticleGenerator::update(double dtSeconds)
 {
     if (!isActive_) return;
 
+    if (registry_) registry_->update(dtSeconds);
+
     // 1) Integrar + limpiar expiradas
     for (size_t i = 0; i < particles_.size(); /* manual */) {
         Particle* p = particles_[i];
@@ -45,6 +54,7 @@ void ParticleGenerator::update(double dtSeconds)
         if (p) p->integrate(dtSeconds);
 
         if (lifeLeft_[i] <= 0.0) {
+            if (registry_ && p) registry_->clearFor(p);
             delete p;
             particles_[i] = particles_.back();
             lifeLeft_[i] = lifeLeft_.back();
@@ -103,6 +113,13 @@ void ParticleGenerator::emitOne()
 
     particles_.push_back(p);
     lifeLeft_.push_back(lifeTime_);
+
+    // Registrar fuerzas globales de este emisor sobre la nueva partícula
+    if (registry_) {
+        for (auto* f : forces_) {
+            if (f && f->isActive()) registry_->add(p, f);
+        }
+    }
 }
 
 // Este metodo mirara que generadores de fuerza afectan a la particula y aplicara las fuerzas correspondientes

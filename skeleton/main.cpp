@@ -12,6 +12,7 @@
 
 #include "Axis.h"
 #include "ParticleGenerator.h"
+#include "GravityForceGenerator.h"
 #include "Particle.h"
 #include "Vector2D.h"
 #include "Vector3D.h"
@@ -40,6 +41,8 @@ std::vector<ParticleGenerator*> gParticleGenerators;
 std::vector<physx::PxShape*> gShapes;
 std::vector<RenderItem*> gRenderItems;
 
+ForceRegistry* gRegistry = nullptr;
+
 // Initialize physics engine
 void initPhysics(bool interactive)
 {
@@ -67,15 +70,37 @@ void initPhysics(bool interactive)
 	// Axis
 	Axis axis(10.f);
 
-	// Particula
-	Vector2D spreadAngle = Vector2D(30, 30);
-	Vector3D orientation = Vector3D::UP;
-	Vector3D spawnPos = Vector3D(0, 5, 0);
-	ParticleGenerator* generador = new ParticleGenerator(10, spreadAngle, orientation, spawnPos);
-	generador->setAverageSpeed(5.0);
+	// Crear force registry
+	gRegistry = new ForceRegistry();
+
+	// Generador de proyectiles
+	Vector2D spreadAngle = Vector2D(10, 10);
+	Vector3D orientation = Vector3D::FORWARD;
+	Vector3D spawnPos = Vector3D(20, 0, 0);
+	ParticleGenerator* generador = new ParticleGenerator(5, spreadAngle, orientation, spawnPos);
+	generador->setAverageSpeed(10.0);
 	generador->setGaussianFactor(1.0);
-	generador->setLifeTime(5.0);
+	generador->setLifeTime(2.0);
 	gParticleGenerators.push_back(generador);
+
+	// Conectar registry al emisor
+	generador->setForceRegistry(gRegistry);
+
+	// Fuerza de gravedad y asociarla al emisor
+	auto* gravityFG = new GravityForceGenerator(Vector3D(0.0, -9.8, 0.0));
+	generador->addGlobalForce(gravityFG);
+
+	// Generador de explosion
+	spreadAngle = Vector2D(360, 360);
+	orientation = Vector3D::UP;
+	spawnPos = Vector3D(0, 0, 0);
+	ParticleGenerator* generadorExplosion = new ParticleGenerator(20, spreadAngle, orientation, spawnPos);
+	generadorExplosion->setAverageSpeed(10.0);
+	generadorExplosion->setGaussianFactor(1.0);
+	generadorExplosion->setLifeTime(2.0);
+	gParticleGenerators.push_back(generadorExplosion);
+
+	// Generador de humo
 }
 
 
