@@ -34,7 +34,7 @@ Vector3D Vector3D::normalized() const
     return Vector3D(_x / magnitude, _y / magnitude, _z / magnitude);
 }
 
-Vector3D Vector3D::scalarMul(double scalar)
+Vector3D Vector3D::scalarMul(double scalar) const
 {
     return Vector3D(_x * scalar, _y * scalar, _z * scalar);
 }
@@ -59,17 +59,17 @@ Vector3D& Vector3D::operator=(const Vector3D& other)
     return *this;
 }
 
-Vector3D Vector3D::operator+(const Vector3D& other)
+Vector3D Vector3D::operator+(const Vector3D& other) const
 {
     return Vector3D(_x + other._x, _y + other._y, _z + other._z);
 }
 
-Vector3D Vector3D::operator-(const Vector3D& other)
+Vector3D Vector3D::operator-(const Vector3D& other) const
 {
     return Vector3D(_x - other._x, _y - other._y, _z - other._z);
 }
 
-Vector3D Vector3D::operator*(const Vector3D& other)
+Vector3D Vector3D::operator*(const Vector3D& other) const
 {
     return Vector3D(_y * other._z - _z * other._y, _z * other._x - _x * other._z, _x * other._y - _y * other._x);
 }

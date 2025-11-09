@@ -13,16 +13,16 @@ public:
 	~Vector3D();
 
 	Vector3D normalized() const;
-	Vector3D scalarMul(double scalar);
+	Vector3D scalarMul(double scalar) const;
 
 	double   scalarProduct(const Vector3D& other) const;
 	Vector3D vectorialProduct(const Vector3D& other) const;
 	
 	// Sobrecargas
 	Vector3D& operator=(const Vector3D& other);
-	Vector3D operator+(const Vector3D& other);
-	Vector3D operator-(const Vector3D& other);
-	Vector3D operator*(const Vector3D& other);
+	Vector3D operator+(const Vector3D& other) const;
+	Vector3D operator-(const Vector3D& other) const;
+	Vector3D operator*(const Vector3D& other) const;
 
     // Getters
 	double getX() const;

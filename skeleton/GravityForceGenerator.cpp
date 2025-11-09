@@ -11,6 +11,6 @@ void GravityForceGenerator::setG(const Vector3D& g)
 
 void GravityForceGenerator::apply(RigidBody& b, double dt)
 {
-	const Vector3D F = g_.scalarMul(b.getMass());
+	const Vector3D F = g_.scalarMul(b.getMass()); // F = m * g
 	b.addForce(F);
 }

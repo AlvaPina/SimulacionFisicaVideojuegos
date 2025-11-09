@@ -13,6 +13,9 @@
 #include "Axis.h"
 #include "ParticleGenerator.h"
 #include "GravityForceGenerator.h"
+#include "WindForceGenerator.h"
+#include "VortexForceGenerator.h"
+#include "ExplosionForceGenerator.h"
 #include "Particle.h"
 #include "Vector2D.h"
 #include "Vector3D.h"
@@ -42,6 +45,8 @@ std::vector<physx::PxShape*> gShapes;
 std::vector<RenderItem*> gRenderItems;
 
 ForceRegistry* gRegistry = nullptr;
+
+ExplosionForceGenerator* gExplosionFG = nullptr;
 
 // Initialize physics engine
 void initPhysics(bool interactive)
@@ -73,34 +78,94 @@ void initPhysics(bool interactive)
 	// Crear force registry
 	gRegistry = new ForceRegistry();
 
-	// Generador de proyectiles
+	// =================== Generador base ===================
 	Vector2D spreadAngle = Vector2D(10, 10);
 	Vector3D orientation = Vector3D::FORWARD;
 	Vector3D spawnPos = Vector3D(20, 0, 0);
-	ParticleGenerator* generador = new ParticleGenerator(5, spreadAngle, orientation, spawnPos);
-	generador->setAverageSpeed(10.0);
-	generador->setGaussianFactor(1.0);
-	generador->setLifeTime(2.0);
-	gParticleGenerators.push_back(generador);
 
-	// Conectar registry al emisor
-	generador->setForceRegistry(gRegistry);
+	ParticleGenerator* generadorBase = new ParticleGenerator(5, spreadAngle, orientation, spawnPos);
+	generadorBase->setAverageSpeed(10.0);
+	generadorBase->setGaussianFactor(1.0);
+	generadorBase->setLifeTime(2.0);
+	gParticleGenerators.push_back(generadorBase);
 
-	// Fuerza de gravedad y asociarla al emisor
+	// Conectar registry al emisor base
+	generadorBase->setForceRegistry(gRegistry);
+
+	// Gravedad (global)
 	auto* gravityFG = new GravityForceGenerator(Vector3D(0.0, -9.8, 0.0));
-	generador->addGlobalForce(gravityFG);
+	generadorBase->addGlobalForce(gravityFG);
 
-	// Generador de explosion
+	// =================== Generador de partículas para explosión ===================
 	spreadAngle = Vector2D(360, 360);
 	orientation = Vector3D::UP;
 	spawnPos = Vector3D(0, 0, 0);
+
 	ParticleGenerator* generadorExplosion = new ParticleGenerator(20, spreadAngle, orientation, spawnPos);
 	generadorExplosion->setAverageSpeed(10.0);
 	generadorExplosion->setGaussianFactor(1.0);
 	generadorExplosion->setLifeTime(2.0);
+	generadorExplosion->setForceRegistry(gRegistry);
+	generadorExplosion->addGlobalForce(gravityFG);
 	gParticleGenerators.push_back(generadorExplosion);
 
-	// Generador de humo
+	// =================== Generador con viento (nuevo emisor) ===================
+	spreadAngle = Vector2D(20, 20);
+	orientation = Vector3D::FORWARD;
+	spawnPos = Vector3D(40, 0, 0);
+
+	ParticleGenerator* generadorViento = new ParticleGenerator(20, spreadAngle, orientation, spawnPos);
+	generadorViento->setAverageSpeed(12.0);
+	generadorViento->setGaussianFactor(1.0);
+	generadorViento->setLifeTime(2.0);
+	generadorViento->setForceRegistry(gRegistry);
+	generadorViento->addGlobalForce(gravityFG);
+	gParticleGenerators.push_back(generadorViento);
+
+	// ---- VIENTO (AABB) ----
+	auto* windFG = new WindForceGenerator(Vector3D(8, 0, 0), /*k1*/0.8, /*k2*/0.0);
+	windFG->setVolume(Vector3D(-10, -10, -10), Vector3D(10, 10, 10));
+
+	// Afecta al emisor base y al de viento
+	generadorBase->addGlobalForce(windFG);
+	generadorViento->addGlobalForce(windFG);
+
+	// =================== Generador con torbellino (nuevo emisor) ===================
+	spreadAngle = Vector2D(25, 25);
+	orientation = Vector3D::UP;
+	spawnPos = Vector3D(0, 0, 0);
+
+	ParticleGenerator* generadorVortex = new ParticleGenerator(20, spreadAngle, orientation, spawnPos);
+	generadorVortex->setAverageSpeed(8.0);
+	generadorVortex->setGaussianFactor(1.0);
+	generadorVortex->setLifeTime(20.0);
+	generadorVortex->setForceRegistry(gRegistry);
+	generadorVortex->addGlobalForce(gravityFG);
+	gParticleGenerators.push_back(generadorVortex);
+
+	// ---- TORBELLINO (eje Y, radio 8) ----
+	auto* vortexFG = new VortexForceGenerator(/*K*/ 4.0,
+		/*center*/ Vector3D(0, 0, 0),
+		/*radius*/ 25.0,
+		/*axis*/   Vector3D(0, 1, 0));
+	vortexFG->setK1(0.8);
+	vortexFG->setK2(0.0);
+
+	// Afecta al emisor base y al de torbellino
+	generadorBase->addGlobalForce(vortexFG);
+	generadorVortex->addGlobalForce(vortexFG);
+
+	// =================== Explosión (OFF al inicio; se activa con tecla) ===================
+	gExplosionFG = new ExplosionForceGenerator(/*center*/ Vector3D(0, 0, 0),
+		/*K*/      2000.0,
+		/*R0*/     6.0,
+		/*tau*/    1.0,
+		/*ve*/     0.0);
+	gExplosionFG->setActive(false);
+
+	// Afecta al emisor base y al de explosión
+	generadorBase->addGlobalForce(gExplosionFG);
+	generadorExplosion->addGlobalForce(gExplosionFG);
 }
 
 
@@ -197,6 +262,14 @@ void keyPress(unsigned char key, const PxTransform& camera)
 		float iniVel = 10.0f;
 		Particle* particle = new Particle(iniPos, forward.scalarMul(iniVel), 1.0f);
 		gParticles.push_back(particle);
+		break;
+	}
+	case 'E': {
+		if (gExplosionFG) {
+			gExplosionFG->resetTime();
+			gExplosionFG->setActive(true);
+			std::cout << "Explosión activada\n";
+		}
 		break;
 	}
 	case ' ': {
