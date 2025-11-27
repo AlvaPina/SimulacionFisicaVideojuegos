@@ -1,21 +1,35 @@
 #include "SpringForceGenerator.h"
+#include "RigidBody.h"
+#include "Vector3D.h"
 
-SpringForceGenerator::SpringForceGenerator(double k, double resting_length, RigidBody* rigidbody) : ForceGenerator() {
-    k_ = k;
-    resting_length_ = resting_length;
-    rigidbody_ = rigidbody;
+SpringForceGenerator::SpringForceGenerator(double k, double resting_length, RigidBody* rigidbody)
+    : k_(k), resting_length_(resting_length), rigidbody_(rigidbody)
+{
 }
 
-void SpringForceGenerator::updateForce(RigidBody* rigidbody) {
-    // Particle is the particle to apply the force
-    Vector3D relative_pos_vector = rigidbody_->getPosition() - rigidbody_->getPosition();
-    Vector3D force;
+// Este es el método que SÍ necesita la base ForceGenerator
+void SpringForceGenerator::apply(RigidBody& body, double dt)
+{
+    if (!active_) return;
 
-    // normalize: Normalize the relative_pos_vector and returns its length.
-    const float length = relative_pos_vector.normalize();
-    const float delta_x = length - resting_length_;
+    // Convertimos la referencia a puntero para reutilizar updateForce(...)
+    updateForce(&body);
+}
 
-    force = relative_pos_vector * delta_x * k_;
+void SpringForceGenerator::updateForce(RigidBody* body)
+{
+    if (!body || !rigidbody_) return;
 
-    rigidbody->addForce(force);
+    // Vector desde body hacia el rigidbody_ (anclaje)
+    Vector3D dir = body->getPosition() - rigidbody_->getPosition();
+
+    double length = dir.normalize(); // normaliza dir y devuelve su longitud original
+    if (length == 0.0) return;
+
+    double delta_x = length - resting_length_;
+
+    // Ley de Hooke: F = -k * x * dirección
+    Vector3D force = dir.scalarMul(-k_ * delta_x);
+
+    body->addForce(force);
 }

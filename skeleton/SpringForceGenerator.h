@@ -8,9 +8,10 @@ class SpringForceGenerator : public ForceGenerator {
 public:
     SpringForceGenerator(double k, double resting_length, RigidBody* rigidbody);
 
+	void apply(RigidBody& body, double dt) override;
     virtual void updateForce(RigidBody* rigidbody);
 
-    inline void setK(double k) { _k = k; }
+    inline void setK(double k) { k_ = k; }
 
     virtual ~SpringForceGenerator() {}
 

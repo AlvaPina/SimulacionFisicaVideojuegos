@@ -27,6 +27,18 @@ Vector3D::~Vector3D()
 {
 }
 
+double Vector3D::normalize()
+{
+    double magnitude = std::sqrt(_x * _x + _y * _y + _z * _z);
+    if (magnitude == 0) return 0;
+
+    _x /= magnitude;
+    _y /= magnitude;
+    _z /= magnitude;
+
+    return magnitude;
+}
+
 Vector3D Vector3D::normalized() const
 {
     double magnitude =  std::sqrt(_x * _x + _y * _y + _z * _z);

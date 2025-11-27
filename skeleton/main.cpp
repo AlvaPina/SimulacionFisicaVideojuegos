@@ -16,6 +16,8 @@
 #include "WindForceGenerator.h"
 #include "VortexForceGenerator.h"
 #include "ExplosionForceGenerator.h"
+#include "SpringForceGenerator.h"
+#include "RigidBody.h"
 #include "Particle.h"
 #include "Vector2D.h"
 #include "Vector3D.h"
@@ -47,6 +49,10 @@ std::vector<RenderItem*> gRenderItems;
 ForceRegistry* gRegistry = nullptr;
 
 ExplosionForceGenerator* gExplosionFG = nullptr;
+
+RigidBody* gSpringBody = nullptr;   // el cuerpo que se mueve
+RigidBody* gSpringAnchor = nullptr;   // el punto de anclaje
+SpringForceGenerator* gSpringFG = nullptr;
 
 // Initialize physics engine
 void initPhysics(bool interactive)
@@ -166,6 +172,30 @@ void initPhysics(bool interactive)
 	// Afecta al emisor base y al de explosión
 	generadorBase->addGlobalForce(gExplosionFG);
 	generadorExplosion->addGlobalForce(gExplosionFG);
+
+	// =================== RIGID BODY + MUELLE ===================
+
+	// 1) Partícula ancla (estática "de facto" porque no le aplicamos fuerzas)
+	gSpringAnchor = new Particle(
+		Vector3D(0.0, 5.0, 0.0),   // posición inicial
+		Vector3D(0.0, 0.0, 0.0),   // velocidad inicial
+		1.0                        // masa (da igual, no recibe fuerzas)
+	);
+	gParticles.push_back(static_cast<Particle*>(gSpringAnchor)); // para que se dibuje e integre (no se moverá)
+
+	// 2) Partícula colgante
+	gSpringBody = new Particle(
+		Vector3D(0.0, 1.0, 0.0),   // por debajo del ancla
+		Vector3D(0.0, 0.0, 0.0),   // velocidad inicial
+		1.0                        // masa
+	);
+	gParticles.push_back(static_cast<Particle*>(gSpringBody));
+
+	// 3) Muelle entre ancla y cuerpo
+	double k = 50.0;          // constante elástica
+	double resting_length = 4.0; // longitud de reposo (distancia entre 5 y 1 en Y = 4)
+
+	gSpringFG = new SpringForceGenerator(k, resting_length, gSpringAnchor);
 }
 
 
@@ -178,6 +208,10 @@ void stepPhysics(bool interactive, double t)
 
 	gScene->simulate(t);
 	gScene->fetchResults(true);
+
+	// Aplicar fuerzas de muelle antes de integrar las partículas
+	if (gSpringFG && gSpringBody)
+		gSpringFG->apply(*gSpringBody, t);
 
 	// Actualizamos particulas
 	for (Particle* particle : gParticles) {
@@ -242,6 +276,13 @@ void cleanupPhysics(bool interactive)
 		if (shape) shape->release();
 	}
 	gShapes.clear();
+
+	if (gSpringFG) {
+		delete gSpringFG;
+		gSpringFG = nullptr;
+	}
+	gSpringBody = nullptr;   // ya se borró en el bucle de gParticles
+	gSpringAnchor = nullptr; // idem
 }
 
 // Function called when a key is pressed

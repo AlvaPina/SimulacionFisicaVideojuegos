@@ -12,6 +12,8 @@ public:
 	Vector3D(const PxVec3& vec);
 	~Vector3D();
 
+	double normalize();
+
 	Vector3D normalized() const;
 	Vector3D scalarMul(double scalar) const;
 
