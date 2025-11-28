@@ -18,6 +18,7 @@
 #include "ExplosionForceGenerator.h"
 #include "SpringForceGenerator.h"
 #include "RigidBody.h"
+#include "RigidBodyPhysX.h"
 #include "Particle.h"
 #include "Vector2D.h"
 #include "Vector3D.h"
@@ -53,6 +54,10 @@ ExplosionForceGenerator* gExplosionFG = nullptr;
 RigidBody* gSpringBody = nullptr;   // el cuerpo que se mueve
 RigidBody* gSpringAnchor = nullptr;   // el punto de anclaje
 SpringForceGenerator* gSpringFG = nullptr;
+
+RigidBody* gCubeRB = nullptr;
+SpringForceGenerator* gCubeSpringFG = nullptr;
+
 
 // Initialize physics engine
 void initPhysics(bool interactive)
@@ -196,6 +201,39 @@ void initPhysics(bool interactive)
 	double resting_length = 4.0; // longitud de reposo (distancia entre 5 y 1 en Y = 4)
 
 	gSpringFG = new SpringForceGenerator(k, resting_length, gSpringAnchor);
+
+	// =================== Cubo rígido colgante ===================
+	PxTransform cubeTransform(PxVec3(0.0f, 3.0f, 0.0f));
+	PxRigidDynamic* cubeActor = gPhysics->createRigidDynamic(cubeTransform);
+
+	PxShape* cubeShape = CreateShape(PxBoxGeometry(0.5f, 0.5f, 0.5f));
+	cubeActor->attachShape(*cubeShape);
+
+	PxRigidBodyExt::updateMassAndInertia(*cubeActor, 1.0f);
+	gScene->addActor(*cubeActor);
+
+	RenderItem* cubeItem = new RenderItem(cubeShape, cubeActor, PxVec4(0, 1, 0, 1));
+	gRenderItems.push_back(cubeItem);
+
+	RigidBodyPhysX* cubeRB = new RigidBodyPhysX(cubeActor);
+
+	// Ancla fija:
+	PxRigidStatic* anchorActor = gPhysics->createRigidStatic(PxTransform(PxVec3(0, 7, 0)));
+
+	PxShape* anchorShape = CreateShape(PxSphereGeometry(0.2f));
+	anchorActor->attachShape(*anchorShape);
+	gScene->addActor(*anchorActor);
+
+	RenderItem* anchorItem = new RenderItem(anchorShape, anchorActor, PxVec4(1, 0, 0, 1));
+	gRenderItems.push_back(anchorItem);
+
+	RigidBodyPhysX* anchorRB = new RigidBodyPhysX(reinterpret_cast<PxRigidDynamic*>(anchorActor));
+
+	// conectar cubo y ancla
+	double k2 = 40.0;
+	double rest = 4.0;
+
+	SpringForceGenerator* spring = new SpringForceGenerator(k2, rest, anchorRB); 
 }
 
 
@@ -212,6 +250,13 @@ void stepPhysics(bool interactive, double t)
 	// Aplicar fuerzas de muelle antes de integrar las partículas
 	if (gSpringFG && gSpringBody)
 		gSpringFG->apply(*gSpringBody, t);
+
+	// Aplicar fuerza del muelle al cubo
+	if (gCubeSpringFG && gCubeRB)
+		gCubeSpringFG->apply(*gCubeRB, t);
+
+	gScene->simulate(t);
+	gScene->fetchResults(true);
 
 	// Actualizamos particulas
 	for (Particle* particle : gParticles) {
