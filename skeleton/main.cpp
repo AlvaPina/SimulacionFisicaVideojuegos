@@ -173,11 +173,11 @@ void initPhysics(bool interactive)
 	generadorBase->addGlobalForce(gExplosionFG);
 	generadorExplosion->addGlobalForce(gExplosionFG);
 
-	// =================== RIGID BODY + MUELLE ===================
+	// =================== MUELLE ===================
 
 	// 1) Partícula ancla (estática "de facto" porque no le aplicamos fuerzas)
 	gSpringAnchor = new Particle(
-		Vector3D(0.0, 5.0, 0.0),   // posición inicial
+		Vector3D(-40.0, 5.0, 0.0),   // posición inicial
 		Vector3D(0.0, 0.0, 0.0),   // velocidad inicial
 		1.0                        // masa (da igual, no recibe fuerzas)
 	);
@@ -185,14 +185,14 @@ void initPhysics(bool interactive)
 
 	// 2) Partícula colgante
 	gSpringBody = new Particle(
-		Vector3D(0.0, 1.0, 0.0),   // por debajo del ancla
-		Vector3D(0.0, 0.0, 0.0),   // velocidad inicial
+		Vector3D(-40.0, 1.0, 0.0),   // por debajo del ancla
+		Vector3D(0.0, 100.0, 0.0),   // velocidad inicial
 		1.0                        // masa
 	);
 	gParticles.push_back(static_cast<Particle*>(gSpringBody));
 
 	// 3) Muelle entre ancla y cuerpo
-	double k = 50.0;          // constante elástica
+	double k = 80.0;          // constante elástica
 	double resting_length = 4.0; // longitud de reposo (distancia entre 5 y 1 en Y = 4)
 
 	gSpringFG = new SpringForceGenerator(k, resting_length, gSpringAnchor);
