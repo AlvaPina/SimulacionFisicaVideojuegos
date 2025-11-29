@@ -269,6 +269,7 @@
     <ClCompile Include="Render\Render.cpp" />
     <ClCompile Include="RigidBody.cpp" />
     <ClCompile Include="RigidBodyPhysX.cpp" />
+    <ClCompile Include="RigidBodyPhysXStatic.cpp" />
     <ClCompile Include="SpringForceGenerator.cpp" />
     <ClCompile Include="Vector2D.cpp" />
     <ClCompile Include="Vector3D.cpp" />
@@ -291,6 +292,7 @@
     <ClInclude Include="Render\Render.h" />
     <ClInclude Include="RigidBody.h" />
     <ClInclude Include="RigidBodyPhysX.h" />
+    <ClInclude Include="RigidBodyPhysXStatic.h" />
     <ClInclude Include="SpringForceGenerator.h" />
     <ClInclude Include="Vector2D.h" />
     <ClInclude Include="Vector3D.h" />

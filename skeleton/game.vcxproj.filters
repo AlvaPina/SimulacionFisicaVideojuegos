@@ -25,6 +25,7 @@
     <ClCompile Include="ExplosionForceGenerator.cpp" />
     <ClCompile Include="SpringForceGenerator.cpp" />
     <ClCompile Include="RigidBodyPhysX.cpp" />
+    <ClCompile Include="RigidBodyPhysXStatic.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core.hpp" />
@@ -51,6 +52,7 @@
     <ClInclude Include="ExplosionForceGenerator.h" />
     <ClInclude Include="SpringForceGenerator.h" />
     <ClInclude Include="RigidBodyPhysX.h" />
+    <ClInclude Include="RigidBodyPhysXStatic.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Render">
