@@ -255,9 +255,6 @@ void stepPhysics(bool interactive, double t)
 	if (gCubeSpringFG && gCubeRB)
 		gCubeSpringFG->apply(*gCubeRB, t);
 
-	gScene->simulate(t);
-	gScene->fetchResults(true);
-
 	// Actualizamos particulas
 	for (Particle* particle : gParticles) {
 		if (particle) {

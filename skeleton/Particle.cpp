@@ -1,9 +1,6 @@
 #include "Particle.h"
 #include <iostream>
 
-extern std::vector<physx::PxShape*> gShapes;
-extern std::vector<RenderItem*> gRenderItems;
-
 Particle::Particle(Vector3D iniPos, Vector3D iniVel, double iniMass)
 {
     _vel = iniVel;
@@ -12,12 +9,19 @@ Particle::Particle(Vector3D iniPos, Vector3D iniVel, double iniMass)
     _mass = iniMass;
     // Render Item
     _renderItem = new RenderItem(CreateShape(PxSphereGeometry(1)), _tr, PxVec4(0 / 255.f, 0 / 255.f, 255 / 255.f, 1));
-    gRenderItems.push_back(_renderItem);
 }
 
 Particle::~Particle() {
-    delete _tr;
-    // todos los _renderItem ya se borran en el main
+    if (_renderItem) {
+        DeregisterRenderItem(_renderItem);  // si RenderUtils lo usa
+        delete _renderItem;
+        _renderItem = nullptr;
+    }
+
+    if (_tr) {
+        delete _tr;
+        _tr = nullptr;
+    }
 }
 
 void Particle::integrate(double t, int type) // 0: euler semi-implicito, 1: euler explicito

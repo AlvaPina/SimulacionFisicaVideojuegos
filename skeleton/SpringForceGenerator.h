@@ -9,7 +9,7 @@ public:
     SpringForceGenerator(double k, double resting_length, RigidBody* rigidbody);
 
 	void apply(RigidBody& body, double dt) override;
-    virtual void updateForce(RigidBody* rigidbody);
+    virtual void updateForce(RigidBody* rigidbody, double dt);
 
     inline void setK(double k) { k_ = k; }
 
