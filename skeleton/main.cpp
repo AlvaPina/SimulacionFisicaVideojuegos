@@ -19,6 +19,7 @@
 #include "SpringForceGenerator.h"
 #include "RigidBody.h"
 #include "RigidBodyPhysX.h"
+#include "RigidBodyPhysXStatic.h"
 #include "Particle.h"
 #include "Vector2D.h"
 #include "Vector3D.h"
@@ -57,6 +58,7 @@ SpringForceGenerator* gSpringFG = nullptr;
 
 RigidBody* gCubeRB = nullptr;
 SpringForceGenerator* gCubeSpringFG = nullptr;
+RigidBody* gCubeAnchorRB = nullptr;
 
 
 // Initialize physics engine
@@ -182,7 +184,7 @@ void initPhysics(bool interactive)
 
 	// 1) Partícula ancla (estática "de facto" porque no le aplicamos fuerzas)
 	gSpringAnchor = new Particle(
-		Vector3D(-40.0, 5.0, 0.0),   // posición inicial
+		Vector3D(-50.0, 5.0, 0.0),   // posición inicial
 		Vector3D(0.0, 0.0, 0.0),   // velocidad inicial
 		1.0                        // masa (da igual, no recibe fuerzas)
 	);
@@ -190,7 +192,7 @@ void initPhysics(bool interactive)
 
 	// 2) Partícula colgante
 	gSpringBody = new Particle(
-		Vector3D(-40.0, 1.0, 0.0),   // por debajo del ancla
+		Vector3D(-50.0, 1.0, 0.0),   // por debajo del ancla
 		Vector3D(0.0, 100.0, 0.0),   // velocidad inicial
 		1.0                        // masa
 	);
@@ -203,37 +205,53 @@ void initPhysics(bool interactive)
 	gSpringFG = new SpringForceGenerator(k, resting_length, gSpringAnchor);
 
 	// =================== Cubo rígido colgante ===================
-	PxTransform cubeTransform(PxVec3(0.0f, 3.0f, 0.0f));
+	PxTransform cubeTransform(PxVec3(-40.0f, 3.0f, 0.0f));
 	PxRigidDynamic* cubeActor = gPhysics->createRigidDynamic(cubeTransform);
 
-	PxShape* cubeShape = CreateShape(PxBoxGeometry(0.5f, 0.5f, 0.5f));
+	PxShape* cubeShape = CreateShape(PxBoxGeometry(1.0f, 1.0f, 1.0f));
 	cubeActor->attachShape(*cubeShape);
 
 	PxRigidBodyExt::updateMassAndInertia(*cubeActor, 1.0f);
 	gScene->addActor(*cubeActor);
 
+	// Render del cubo
 	RenderItem* cubeItem = new RenderItem(cubeShape, cubeActor, PxVec4(0, 1, 0, 1));
 	gRenderItems.push_back(cubeItem);
 
-	RigidBodyPhysX* cubeRB = new RigidBodyPhysX(cubeActor);
+	// Adaptador dinámico
+	gCubeRB = new RigidBodyPhysX(cubeActor);
 
-	// Ancla fija:
-	PxRigidStatic* anchorActor = gPhysics->createRigidStatic(PxTransform(PxVec3(0, 7, 0)));
-
+	// ---- Ancla fija con PxRigidStatic ----
+	PxRigidStatic* anchorActor = gPhysics->createRigidStatic(PxTransform(PxVec3(-40, 15, 0)));
 	PxShape* anchorShape = CreateShape(PxSphereGeometry(0.2f));
 	anchorActor->attachShape(*anchorShape);
 	gScene->addActor(*anchorActor);
 
+	// Render de la bolita del ancla
 	RenderItem* anchorItem = new RenderItem(anchorShape, anchorActor, PxVec4(1, 0, 0, 1));
 	gRenderItems.push_back(anchorItem);
 
-	RigidBodyPhysX* anchorRB = new RigidBodyPhysX(reinterpret_cast<PxRigidDynamic*>(anchorActor));
+	// Adaptador estático
+	gCubeAnchorRB = new RigidBodyPhysXStatic(anchorActor);
 
-	// conectar cubo y ancla
-	double k2 = 40.0;
-	double rest = 4.0;
+	// ---- Muelle entre ancla estática y cubo dinámico ----
+	double kCube = 80.0;
+	double restCube = 10.0;
 
-	SpringForceGenerator* spring = new SpringForceGenerator(k2, rest, anchorRB); 
+	gCubeSpringFG = new SpringForceGenerator(kCube, restCube, gCubeAnchorRB);
+
+	// =================== Suelo estático ===================
+	PxRigidStatic* groundActor =
+		gPhysics->createRigidStatic(PxTransform(PxVec3(0.0f, -2.0f, 0.0f)));
+
+	PxShape* groundShape = CreateShape(PxBoxGeometry(50.0f, 1.0f, 50.0f));
+	groundActor->attachShape(*groundShape);
+	gScene->addActor(*groundActor);
+
+	// Render del suelo
+	RenderItem* groundItem = new RenderItem(groundShape, groundActor,
+		PxVec4(0.3f, 0.3f, 0.3f, 1.0f));
+	gRenderItems.push_back(groundItem);
 }
 
 
@@ -244,31 +262,23 @@ void stepPhysics(bool interactive, double t)
 {
 	PX_UNUSED(interactive);
 
+	// 1) Aplicar fuerzas de muelles (antes de simular PhysX)
+	if (gSpringFG && gSpringBody)
+		gSpringFG->apply(*gSpringBody, t);      // muelle de partículas
+
+	if (gCubeSpringFG && gCubeRB)
+		gCubeSpringFG->apply(*gCubeRB, t);      // muelle del cubo PhysX
+
+	// 2) Simulación PhysX
 	gScene->simulate(t);
 	gScene->fetchResults(true);
 
-	// Aplicar fuerzas de muelle antes de integrar las partículas
-	if (gSpringFG && gSpringBody)
-		gSpringFG->apply(*gSpringBody, t);
+	// 3) Partículas "caseras"
+	for (Particle* particle : gParticles)
+		if (particle) particle->integrate(t);
 
-	// Aplicar fuerza del muelle al cubo
-	if (gCubeSpringFG && gCubeRB)
-		gCubeSpringFG->apply(*gCubeRB, t);
-
-	// Actualizamos particulas
-	for (Particle* particle : gParticles) {
-		if (particle) {
-			//std::cout << "integrate";
-			particle->integrate(t);
-		}
-	}
-	// Actualizamos generadores particulas
-	for (ParticleGenerator* generator : gParticleGenerators) {
-		if (generator) {
-			//std::cout << "integrate";
-			generator->update(t);
-		}
-	}
+	for (ParticleGenerator* generator : gParticleGenerators)
+		if (generator) generator->update(t);
 }
 
 // Function to clean data
