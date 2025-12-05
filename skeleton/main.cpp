@@ -21,6 +21,7 @@
 #include "RigidBodyPhysX.h"
 #include "RigidBodyPhysXStatic.h"
 #include "Particle.h"
+#include "Car.h"
 #include "Vector2D.h"
 #include "Vector3D.h"
 std::string display_text = "Hola Mundo";
@@ -59,6 +60,8 @@ SpringForceGenerator* gSpringFG = nullptr;
 RigidBody* gCubeRB = nullptr;
 SpringForceGenerator* gCubeSpringFG = nullptr;
 RigidBody* gCubeAnchorRB = nullptr;
+
+Car* gCar = nullptr;
 
 
 // Initialize physics engine
@@ -252,6 +255,12 @@ void initPhysics(bool interactive)
 	RenderItem* groundItem = new RenderItem(groundShape, groundActor,
 		PxVec4(0.3f, 0.3f, 0.3f, 1.0f));
 	gRenderItems.push_back(groundItem);
+
+	// =================== Coche ===================
+	PxTransform carPose(PxVec3(0.0f, 2.0f, -20.0f));
+	PxVec3 carHalfExtents(2.0f, 0.5f, 4.0f);   // ancho, alto, largo
+
+	gCar = new Car(gPhysics, gScene, carPose, carHalfExtents);
 }
 
 
@@ -279,6 +288,8 @@ void stepPhysics(bool interactive, double t)
 
 	for (ParticleGenerator* generator : gParticleGenerators)
 		if (generator) generator->update(t);
+
+	if (gCar) gCar->update(static_cast<float>(t));
 }
 
 // Function to clean data
@@ -335,6 +346,11 @@ void cleanupPhysics(bool interactive)
 	}
 	gSpringBody = nullptr;   // ya se borró en el bucle de gParticles
 	gSpringAnchor = nullptr; // idem
+
+	if (gCar) {
+		delete gCar;
+		gCar = nullptr;
+	}
 }
 
 // Function called when a key is pressed
@@ -365,6 +381,21 @@ void keyPress(unsigned char key, const PxTransform& camera)
 		}
 		break;
 	}
+	case 'W':    // acelerar
+		if (gCar) gCar->setThrottle(1.0f);
+		break;
+	case 'S':    // marcha atrás / freno
+		if (gCar) gCar->setThrottle(-1.0f);
+		break;
+	case 'X':    // soltar acelerador
+		if (gCar) gCar->setThrottle(0.0f);
+		break;
+	case 'A':    // girar izquierda
+		if (gCar) gCar->setSteer(-1.0f);
+		break;
+	case 'D':    // girar derecha
+		if (gCar) gCar->setSteer(0.0f);
+		break;
 	case ' ': {
 		break;
 	}

@@ -16,4 +16,5 @@ public:
 
 private:
     PxRigidDynamic* actor_;
+
 };

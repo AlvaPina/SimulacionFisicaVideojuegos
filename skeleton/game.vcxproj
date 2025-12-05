@@ -256,6 +256,7 @@
   <ItemGroup>
     <ClCompile Include="Axis.cpp" />
     <ClCompile Include="callbacks.cpp" />
+    <ClCompile Include="Car.cpp" />
     <ClCompile Include="ExplosionForceGenerator.cpp" />
     <ClCompile Include="ForceGenerator.cpp" />
     <ClCompile Include="ForceRegistry.cpp" />
@@ -279,6 +280,7 @@
   <ItemGroup>
     <ClInclude Include="Axis.h" />
     <ClInclude Include="callbacks.hpp" />
+    <ClInclude Include="Car.h" />
     <ClInclude Include="core.hpp" />
     <ClInclude Include="ExplosionForceGenerator.h" />
     <ClInclude Include="ForceGenerator.h" />
