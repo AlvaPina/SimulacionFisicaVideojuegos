@@ -1,40 +1,37 @@
-#pragma once
-#include <PxPhysicsAPI.h>
-#include "RenderUtils.hpp" 
+#ifndef CAR_H
+#define CAR_H
 
-using namespace physx;
+#include <PxPhysicsAPI.h>
+#include <vector>
+#include "RenderUtils.hpp" 
 
 class Car
 {
 public:
-	Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVec3& halfExtents);
+	Car(physx::PxPhysics* physics, physx::PxScene* scene, const physx::PxTransform& pose, const physx::PxVec3& halfExtents);
 	~Car();
 
 	void update(float dt);
 
+	// Controles
 	void setThrottle(float v);
 	void setSteer(float v);
 
-	PxRigidDynamic* getActor() const { return actor_; }
-
-	physx::PxTransform GetTransform() const
-	{
-		// Asumo que tu actor rígido se llama mVehicleActor, mActor, o similar.
-		// Cambia 'mActor' por el nombre real de tu variable PxRigidDynamic* en la clase Car.
-		if (actor_)
-			return actor_->getGlobalPose();
-
+	// Método necesario para la cámara
+	physx::PxTransform GetTransform() const {
+		if (actor_) return actor_->getGlobalPose();
 		return physx::PxTransform(physx::PxIdentity);
 	}
 
 private:
-	PxPhysics* physics_;
-	PxScene* scene_;
-	PxRigidDynamic* actor_;
+	physx::PxPhysics* physics_;
+	physx::PxScene* scene_;
+	physx::PxRigidDynamic* actor_;
 	RenderItem* renderItem_;
 
-	float throttle_;
-	float steer_;
+	// Parámetros del coche
+	float throttle_; // -1 a 1
+	float steer_;    // -1 a 1
 
 	float moveForce_;
 	float turnTorque_;
@@ -45,6 +42,7 @@ private:
 	float springDamper_;
 	float carHalfHeight_;
 
-	// Debug
-	int frameCounter_; // Para controlar los prints
+	int frameCounter_;
 };
+
+#endif

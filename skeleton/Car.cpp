@@ -1,13 +1,16 @@
 ﻿#include "Car.h"
 #include <iostream>
 #include <cmath>
-#include <algorithm> // Para std::max
+#include <algorithm>
 
+using namespace physx;
+
+// Importamos las listas globales para poder añadir el coche al render
 extern std::vector<RenderItem*> gRenderItems;
 extern std::vector<physx::PxShape*> gShapes;
 
 // =========================================================================
-// FILTRO DE RAYCAST
+// FILTRO DE RAYCAST (Para que el rayo no choque con el propio chasis)
 // =========================================================================
 struct IgnoreBodyFilter : public PxQueryFilterCallback
 {
@@ -32,7 +35,7 @@ struct IgnoreBodyFilter : public PxQueryFilterCallback
 };
 
 // =========================================================================
-// CLASE CAR
+// IMPLEMENTACIÓN DE LA CLASE CAR
 // =========================================================================
 
 Car::Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVec3& halfExtents)
@@ -41,47 +44,41 @@ Car::Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVe
 	moveForce_ = 10000.0f;
 	turnTorque_ = 5000.0f;
 
-	// Altura visual real (la que queremos proteger que no entre en el suelo)
-	carHalfHeight_ = halfExtents.y + 10.0f;
+	// === CORRECCIÓN IMPORTANTE ===
+	// Eliminamos el +10.0f que causaba que el coche saliera volando.
+	carHalfHeight_ = halfExtents.y;
 
-	// === SUSPENSIÓN REFORZADA ===
-	// Longitud de reposo amplia para empezar a frenar antes
-	suspensionRestLength_ = 1.0f;
+	// Suspensión: Longitud del "rayo" invisible bajo el coche
+	suspensionRestLength_ = 2.0f;
 
-	// Fuerza base ALTA
-	springStrength_ = 80000.0f;
-	springDamper_ = 8000.0f;
+	// Fuerza del muelle y amortiguador
+	springStrength_ = 60000.0f;
+	springDamper_ = 5000.0f;
 
 	actor_ = physics_->createRigidDynamic(pose);
 
-	// ===========================================================
-	// ESTRATEGIA DE SEGURIDAD: COLLIDER ULTRA-FINO
-	// ===========================================================
-
+	// Material sin fricción para el collider (evitar enganchones si toca suelo)
 	PxMaterial* mat = physics_->createMaterial(0.0f, 0.0f, 0.0f);
 
-	// 1. FORMA VISUAL (Tamaño completo para el render)
+	// 1. FORMA VISUAL
 	PxShape* shapeVisual = physics_->createShape(PxBoxGeometry(halfExtents), *mat);
 	gShapes.push_back(shapeVisual);
 
-	// 2. FORMA FÍSICA (Collider reducido al 25%)
-	// Al ser tan fino, el centro físico está muy lejos del suelo incluso
-	// cuando la rueda visual está tocando.
+	// 2. FORMA FÍSICA (Chasis ultra fino)
 	PxVec3 colliderDim = halfExtents;
-	colliderDim.y *= 0.25f; // <--- MUY FINO (Como un chasis de skate)
-
+	colliderDim.y *= 0.25f; // Muy plano para no chocar fácil con el suelo
 	PxShape* shapeCollider = physics_->createShape(PxBoxGeometry(colliderDim), *mat);
-	actor_->attachShape(*shapeCollider);
-	gShapes.push_back(shapeCollider);
 
-	// ===========================================================
+	actor_->attachShape(*shapeCollider);
+	gShapes.push_back(shapeCollider); // Guardar para limpiar memoria luego
 
 	PxRigidBodyExt::updateMassAndInertia(*actor_, 1500.0f);
-	// Centro de masas en la parte baja visual
+
+	// Bajar el centro de masas para evitar vuelcos
 	actor_->setCMassLocalPose(PxTransform(PxVec3(0.0f, -halfExtents.y, 0.0f)));
 
 	actor_->setLinearDamping(0.1f);
-	actor_->setAngularDamping(0.8f);
+	actor_->setAngularDamping(2.0f); // Alto damping angular para que no gire como peonza
 
 	scene_->addActor(*actor_);
 
@@ -91,6 +88,8 @@ Car::Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVe
 
 Car::~Car()
 {
+	// La limpieza de actor y shapes se suele hacer en el cleanup global,
+	// pero aquí podrías limpiar punteros específicos si fuera necesario.
 }
 
 void Car::setThrottle(float v) { throttle_ = v; }
@@ -100,13 +99,15 @@ void Car::update(float dt)
 {
 	if (!actor_ || !scene_) return;
 
-	actor_->wakeUp();
+	actor_->wakeUp(); // Asegurar que PhysX no duerma el coche
 
 	frameCounter_++;
 	bool doDebug = (frameCounter_ % 60 == 0);
 
 	PxTransform t = actor_->getGlobalPose();
 	PxVec3 origin = t.p;
+
+	// Disparamos el rayo hacia ABAJO relativo al coche
 	PxVec3 dir = t.q.rotate(PxVec3(0, -1, 0));
 	PxVec3 upDir = -dir;
 
@@ -115,8 +116,7 @@ void Car::update(float dt)
 	PxQueryFilterData filterData;
 	filterData.flags |= PxQueryFlag::ePREFILTER;
 
-	// Raycast largo para anticipar suelo
-	float maxDist = suspensionRestLength_ + 2.0f;
+	float maxDist = suspensionRestLength_ + 1.0f; // Un poco de margen extra
 
 	bool status = scene_->raycast(origin, dir, maxDist, hit,
 		PxHitFlag::eDEFAULT, filterData, &filter);
@@ -127,12 +127,14 @@ void Car::update(float dt)
 	{
 		float distance = hit.block.distance;
 
+		// Si el suelo está dentro del rango de la suspensión
 		if (distance < suspensionRestLength_)
 		{
 			isGrounded = true;
 
 			float compression = suspensionRestLength_ - distance;
 
+			// Velocidad vertical relativa
 			PxVec3 velocity = actor_->getLinearVelocity();
 			float springVelocity = velocity.dot(upDir);
 
@@ -141,57 +143,51 @@ void Car::update(float dt)
 
 			float totalForce = springForce - damperForce;
 
-			// === SEGURIDAD ANTI-CLIPPING (BUMP STOP) ===
-			// carHalfHeight_ es la distancia desde el centro hasta la panza visual del coche.
-			// Si la distancia es menor que eso, ESTAMOS ENTRANDO EN EL SUELO.
-
-			// Zona de peligro: Empezamos a aplicar fuerza extra un poco antes de tocar (al 120% de la altura)
-			float limitDist = carHalfHeight_ * 1.2f;
-
-			if (distance < limitDist)
+			// === SAFETY KICK CORREGIDO ===
+			// Si la distancia es muy pequeña (el chasis va a rozar), empujamos fuerte.
+			// carHalfHeight_ es la mitad de la altura, pero el collider es el 25%.
+			// Usamos un valor pequeño fijo (0.5m) como límite de pánico.
+			if (distance < 0.5f)
 			{
-				// Calculamos cuánto nos estamos pasando de la raya
-				float penetration = limitDist - distance;
-
-				// Fuerza exponencial: Cuanto más entra, más bestia es la respuesta.
-				// Multiplicamos por 200,000 extra por cada metro de penetración
-				float penaltyForce = penetration * 500000.0f;
-
+				float penetration = 0.5f - distance;
+				float penaltyForce = penetration * 100000.0f; // Empuje de emergencia
 				totalForce += penaltyForce;
 
-				if (doDebug) std::cout << " [!!! SAFETY KICK: " << penaltyForce << " !!!]";
-			}
-			// ==========================================
-
-			if (doDebug) {
-				std::cout << "D: " << distance << " | F: " << totalForce << std::endl;
+				// if (doDebug) std::cout << " [! SUELO !] ";
 			}
 
-			// Aseguramos que la fuerza nunca sea negativa (no succionar hacia el suelo)
-			if (totalForce < 0) totalForce = 0;
+			if (totalForce < 0) totalForce = 0; // No succionar
 
 			actor_->addForce(upDir * totalForce * dt, PxForceMode::eIMPULSE);
 		}
 	}
 
+	// LÓGICA DE MOVIMIENTO (Solo si tocamos suelo)
 	if (isGrounded)
 	{
-		// Fricción lateral
+		// 1. Fricción Lateral (Para que no deslice como hielo)
 		PxVec3 velocity = actor_->getLinearVelocity();
 		PxVec3 right = t.q.rotate(PxVec3(1, 0, 0));
 		float lateralSpeed = velocity.dot(right);
-		PxVec3 lateralImpulse = -right * lateralSpeed * actor_->getMass() * 0.8f;
+		// Impulso contrario a la velocidad lateral
+		PxVec3 lateralImpulse = -right * lateralSpeed * actor_->getMass() * 0.5f;
 		actor_->addForce(lateralImpulse * dt, PxForceMode::eIMPULSE);
 
-		// Controles
+		// 2. Aceleración (W / S)
 		if (throttle_ != 0.0f) {
-			PxVec3 forward = t.q.rotate(PxVec3(0, 0, 1));
+			PxVec3 forward = t.q.rotate(PxVec3(0, 0, -1));
+			// Nota: Si tu coche va al revés, cambia a PxVec3(0, 0, -1)
 			actor_->addForce(forward * throttle_ * moveForce_);
+
+			// if (doDebug) std::cout << "GAS! ";
 		}
 
+		// 3. Giro (A / D)
 		if (steer_ != 0.0f) {
 			PxVec3 up = t.q.rotate(PxVec3(0, 1, 0));
+			// Torque para girar sobre el eje Y
 			actor_->addTorque(up * (-steer_) * turnTorque_);
 		}
+		steer_ = 0.0f;
 	}
 }

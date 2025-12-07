@@ -211,7 +211,7 @@ void initPhysics(bool interactive)
 	PxTransform cubeTransform(PxVec3(-40.0f, 3.0f, 0.0f));
 	PxRigidDynamic* cubeActor = gPhysics->createRigidDynamic(cubeTransform);
 
-	PxShape* cubeShape = CreateShape(PxBoxGeometry(1.0f, 1.0f, 1.0f));
+	PxShape* cubeShape = CreateShape(PxBoxGeometry(2.0f, 2.0f, 2.0f));
 	cubeActor->attachShape(*cubeShape);
 
 	PxRigidBodyExt::updateMassAndInertia(*cubeActor, 1.0f);
@@ -411,19 +411,16 @@ void keyPress(unsigned char key, const PxTransform& camera)
 		break;
 	}
 	case 'W':    // acelerar
-		if (gCar) gCar->setThrottle(1.0f);
+		if (gCar) gCar->setThrottle(3.0f);
 		break;
 	case 'S':    // marcha atrás / freno
-		if (gCar) gCar->setThrottle(-1.0f);
-		break;
-	case 'X':    // soltar acelerador
-		if (gCar) gCar->setThrottle(0.0f);
+		if (gCar) gCar->setThrottle(-3.0f);
 		break;
 	case 'A':    // girar izquierda
-		if (gCar) gCar->setSteer(-1.0f);
+		if (gCar) gCar->setSteer(-1000.0f);
 		break;
 	case 'D':    // girar derecha
-		if (gCar) gCar->setSteer(0.0f);
+		if (gCar) gCar->setSteer(1000.0f);
 		break;
 	case ' ': {
 		break;
