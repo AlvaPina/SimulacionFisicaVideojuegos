@@ -188,6 +188,5 @@ void Car::update(float dt)
 			// Torque para girar sobre el eje Y
 			actor_->addTorque(up * (-steer_) * turnTorque_);
 		}
-		steer_ = 0.0f;
 	}
 }
