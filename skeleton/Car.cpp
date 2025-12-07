@@ -1,169 +1,197 @@
-// Car.cpp
-#include "Car.h"
-#include "core.hpp"              // Para CreateShape
-#include "extensions/PxRigidBodyExt.h"
+Ôªø#include "Car.h"
+#include <iostream>
+#include <cmath>
+#include <algorithm> // Para std::max
 
-using namespace physx;
+extern std::vector<RenderItem*> gRenderItems;
+extern std::vector<physx::PxShape*> gShapes;
 
-Car::Car(PxPhysics* physics, PxScene* scene,
-    const PxTransform& pose, const PxVec3& halfExtents)
-    : mPhysics(physics), mScene(scene)
+// =========================================================================
+// FILTRO DE RAYCAST
+// =========================================================================
+struct IgnoreBodyFilter : public PxQueryFilterCallback
 {
-    // Crear chasis como caja alargada
-    mChassis = mPhysics->createRigidDynamic(pose);
+	PxRigidActor* actorToIgnore;
 
-    PxShape* chassisShape = CreateShape(PxBoxGeometry(halfExtents));
-    mChassis->attachShape(*chassisShape);
+	IgnoreBodyFilter(PxRigidActor* actor) : actorToIgnore(actor) {}
 
-    // Ajustar masa e inercia
-    PxRigidBodyExt::updateMassAndInertia(*mChassis, 700.0f); // 800 kg, por ejemplo
+	virtual PxQueryHitType::Enum preFilter(
+		const PxFilterData& filterData,
+		const PxShape* shape,
+		const PxRigidActor* actor,
+		PxHitFlags& queryFlags)
+	{
+		if (actor == actorToIgnore) return PxQueryHitType::eNONE;
+		return PxQueryHitType::eBLOCK;
+	}
 
-    mScene->addActor(*mChassis);
+	virtual PxQueryHitType::Enum postFilter(const PxFilterData& filterData, const PxQueryHit& hit)
+	{
+		return PxQueryHitType::eBLOCK;
+	}
+};
 
-    // Render del chasis (azul)
-    mChassisRender = new RenderItem(chassisShape, mChassis, PxVec4(0, 0, 1, 1));
+// =========================================================================
+// CLASE CAR
+// =========================================================================
 
-    // ----------------- ConfiguraciÛn de ruedas -----------------
-    // Posiciones locales (delante/atr·s, izquierda/derecha, abajo)
-    const float sx = halfExtents.x - 0.5f;
-    const float sz = halfExtents.z - 0.5f;
-    const float sy = -halfExtents.y + 5.5f;         // parte baja del chasis
+Car::Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVec3& halfExtents)
+	: physics_(physics), scene_(scene), throttle_(0.0f), steer_(0.0f), frameCounter_(0)
+{
+	moveForce_ = 10000.0f;
+	turnTorque_ = 5000.0f;
 
-    const float restLen = 5.2f;             // longitud de reposo del muelle
-    const float maxLen = 10.0f;             // m·ximo de raycast
-    const float stiffness = 18000.0f;        // k del muelle
-    const float damping = 1000.0f;         // amortiguaciÛn
-    const float wheelR = 1.6f;            // radio "visual" rueda
+	// Altura visual real (la que queremos proteger que no entre en el suelo)
+	carHalfHeight_ = halfExtents.y + 10.0f;
 
-    // Front-left
-    mWheels[0].localPos = PxVec3(-sx, sy, sz);
-    mWheels[0].restLength = restLen;
-    mWheels[0].maxLength = maxLen;
-    mWheels[0].stiffness = stiffness;
-    mWheels[0].damping = damping;
-    mWheels[0].radius = wheelR;
+	// === SUSPENSI√ìN REFORZADA ===
+	// Longitud de reposo amplia para empezar a frenar antes
+	suspensionRestLength_ = 1.0f;
 
-    // Front-right
-    mWheels[1] = mWheels[0];
-    mWheels[1].localPos.x = +sx;
+	// Fuerza base ALTA
+	springStrength_ = 80000.0f;
+	springDamper_ = 8000.0f;
 
-    // Rear-left
-    mWheels[2] = mWheels[0];
-    mWheels[2].localPos.z = -sz;
+	actor_ = physics_->createRigidDynamic(pose);
 
-    // Rear-right
-    mWheels[3] = mWheels[2];
-    mWheels[3].localPos.x = +sx;
+	// ===========================================================
+	// ESTRATEGIA DE SEGURIDAD: COLLIDER ULTRA-FINO
+	// ===========================================================
+
+	PxMaterial* mat = physics_->createMaterial(0.0f, 0.0f, 0.0f);
+
+	// 1. FORMA VISUAL (Tama√±o completo para el render)
+	PxShape* shapeVisual = physics_->createShape(PxBoxGeometry(halfExtents), *mat);
+	gShapes.push_back(shapeVisual);
+
+	// 2. FORMA F√çSICA (Collider reducido al 25%)
+	// Al ser tan fino, el centro f√≠sico est√° muy lejos del suelo incluso
+	// cuando la rueda visual est√° tocando.
+	PxVec3 colliderDim = halfExtents;
+	colliderDim.y *= 0.25f; // <--- MUY FINO (Como un chasis de skate)
+
+	PxShape* shapeCollider = physics_->createShape(PxBoxGeometry(colliderDim), *mat);
+	actor_->attachShape(*shapeCollider);
+	gShapes.push_back(shapeCollider);
+
+	// ===========================================================
+
+	PxRigidBodyExt::updateMassAndInertia(*actor_, 1500.0f);
+	// Centro de masas en la parte baja visual
+	actor_->setCMassLocalPose(PxTransform(PxVec3(0.0f, -halfExtents.y, 0.0f)));
+
+	actor_->setLinearDamping(0.1f);
+	actor_->setAngularDamping(0.8f);
+
+	scene_->addActor(*actor_);
+
+	renderItem_ = new RenderItem(shapeVisual, actor_, PxVec4(0.8f, 0.2f, 0.2f, 1.0f));
+	gRenderItems.push_back(renderItem_);
 }
 
 Car::~Car()
 {
-    DeregisterRenderItem(mChassisRender);
-    delete mChassisRender;
 }
+
+void Car::setThrottle(float v) { throttle_ = v; }
+void Car::setSteer(float v) { steer_ = v; }
 
 void Car::update(float dt)
 {
-    if (!mChassis) return;
+	if (!actor_ || !scene_) return;
 
-    // Suspensiones (raycasts + muelles)
-    for (int i = 0; i < 4; ++i)
-        addSuspensionForce(mWheels[i], dt);
+	actor_->wakeUp();
 
-    // Motor sencillo
-    addEngineForce(dt);
+	frameCounter_++;
+	bool doDebug = (frameCounter_ % 60 == 0);
 
-    // Giro sencillo
-    addSteerTorque(dt);
-}
+	PxTransform t = actor_->getGlobalPose();
+	PxVec3 origin = t.p;
+	PxVec3 dir = t.q.rotate(PxVec3(0, -1, 0));
+	PxVec3 upDir = -dir;
 
-// Aplica fuerza de suspensiÛn mediante raycast
-void Car::addSuspensionForce(Wheel& w, float dt)
-{
-    PxTransform pose = mChassis->getGlobalPose();
+	PxRaycastBuffer hit;
+	IgnoreBodyFilter filter(actor_);
+	PxQueryFilterData filterData;
+	filterData.flags |= PxQueryFlag::ePREFILTER;
 
-    // PosiciÛn mundial del punto de anclaje de la rueda
-    PxVec3 wheelWorldPos = pose.transform(w.localPos);
+	// Raycast largo para anticipar suelo
+	float maxDist = suspensionRestLength_ + 2.0f;
 
-    // DirecciÛn del raycast: hacia abajo en mundo (y negativo).
-    // Si quieres suspensiones "pegadas" al chasis, podrÌas usar el eje local,
-    // pero para simplificar usamos vector global (0,-1,0).
-    PxVec3 rayDir(0.0f, -1.0f, 0.0f);
+	bool status = scene_->raycast(origin, dir, maxDist, hit,
+		PxHitFlag::eDEFAULT, filterData, &filter);
 
-    // Distancia m·xima = longitud del muelle + algo de ìslackî
-    float maxDist = w.maxLength + w.radius;
+	bool isGrounded = false;
 
-    PxRaycastBuffer hit;
-    bool blocked = mScene->raycast(wheelWorldPos, rayDir, maxDist,
-        hit, PxHitFlag::ePOSITION | PxHitFlag::eNORMAL);
-    if (!blocked) return;
+	if (status)
+	{
+		float distance = hit.block.distance;
 
-    // Distancia real al contacto (desde el punto de anclaje)
-    float dist = hit.block.distance - w.radius;  // compensar radio de rueda
-    if (dist < 0.0f) dist = 0.0f;
+		if (distance < suspensionRestLength_)
+		{
+			isGrounded = true;
 
-    // CompresiÛn del muelle: reposo - distancia
-    float compression = w.restLength - dist;
-    if (compression <= 0.0f) return;  // no comprimido -> no hay fuerza de resorte
+			float compression = suspensionRestLength_ - distance;
 
-    // Velocidad del punto donde est· la rueda
-    PxVec3 relPos = wheelWorldPos - mChassis->getGlobalPose().p;
-    PxVec3 velAtPoint =
-        mChassis->getLinearVelocity() +
-        mChassis->getAngularVelocity().cross(relPos);
+			PxVec3 velocity = actor_->getLinearVelocity();
+			float springVelocity = velocity.dot(upDir);
 
-    float velAlongRay = velAtPoint.dot(rayDir); // componente en direcciÛn del raycast
+			float springForce = (compression * springStrength_);
+			float damperForce = (springVelocity * springDamper_);
 
-    // Hooke + amortiguaciÛn (en magnitud)
-    float springForceMag = w.stiffness * compression;
-    float dampingForceMag = w.damping * velAlongRay;
+			float totalForce = springForce - damperForce;
 
-    float totalForceMag = springForceMag - dampingForceMag;
-    if (totalForceMag < 0.0f) totalForceMag = 0.0f; // no ìchupaî hacia abajo
+			// === SEGURIDAD ANTI-CLIPPING (BUMP STOP) ===
+			// carHalfHeight_ es la distancia desde el centro hasta la panza visual del coche.
+			// Si la distancia es menor que eso, ESTAMOS ENTRANDO EN EL SUELO.
 
-    // La fuerza va en direcciÛn contraria al raycast (hacia arriba)
-    PxVec3 force = -rayDir * totalForceMag;
+			// Zona de peligro: Empezamos a aplicar fuerza extra un poco antes de tocar (al 120% de la altura)
+			float limitDist = carHalfHeight_ * 1.2f;
 
-    // Aplicar fuerza en la posiciÛn de la rueda
-    PxRigidBodyExt::addForceAtPos(*mChassis, force, wheelWorldPos, PxForceMode::eFORCE);
-}
+			if (distance < limitDist)
+			{
+				// Calculamos cu√°nto nos estamos pasando de la raya
+				float penetration = limitDist - distance;
 
-// Fuerza de motor muy simple: empuja el chasis hacia delante seg˙n throttle
-void Car::addEngineForce(float dt)
-{
-    PX_UNUSED(dt);
+				// Fuerza exponencial: Cuanto m√°s entra, m√°s bestia es la respuesta.
+				// Multiplicamos por 200,000 extra por cada metro de penetraci√≥n
+				float penaltyForce = penetration * 500000.0f;
 
-    if (mThrottle == 0.0f) return;
+				totalForce += penaltyForce;
 
-    PxTransform pose = mChassis->getGlobalPose();
+				if (doDebug) std::cout << " [!!! SAFETY KICK: " << penaltyForce << " !!!]";
+			}
+			// ==========================================
 
-    // Suponemos que el eje "forward" del chasis es +Z
-    PxVec3 forward = pose.q.rotate(PxVec3(0.0f, 0.0f, 1.0f));
+			if (doDebug) {
+				std::cout << "D: " << distance << " | F: " << totalForce << std::endl;
+			}
 
-    PxVec3 force = forward * (mEngineForce * mThrottle);
-    mChassis->addForce(force, PxForceMode::eFORCE);
-}
+			// Aseguramos que la fuerza nunca sea negativa (no succionar hacia el suelo)
+			if (totalForce < 0) totalForce = 0;
 
-void Car::addSteerTorque(float dt)
-{
-    PX_UNUSED(dt);
+			actor_->addForce(upDir * totalForce * dt, PxForceMode::eIMPULSE);
+		}
+	}
 
-    if (!mChassis) return;
+	if (isGrounded)
+	{
+		// Fricci√≥n lateral
+		PxVec3 velocity = actor_->getLinearVelocity();
+		PxVec3 right = t.q.rotate(PxVec3(1, 0, 0));
+		float lateralSpeed = velocity.dot(right);
+		PxVec3 lateralImpulse = -right * lateralSpeed * actor_->getMass() * 0.8f;
+		actor_->addForce(lateralImpulse * dt, PxForceMode::eIMPULSE);
 
-    // Entrada de giro [-1,1]
-    const float s = mSteer;
-    if (fabs(s) < 1e-3f) return;
+		// Controles
+		if (throttle_ != 0.0f) {
+			PxVec3 forward = t.q.rotate(PxVec3(0, 0, 1));
+			actor_->addForce(forward * throttle_ * moveForce_);
+		}
 
-    // Escalar por velocidad, para que no gire loco estando parado
-    float speed = mChassis->getLinearVelocity().magnitude();
-    if (speed < 0.5f) return; // casi parado -> no giramos
-
-    if (speed > 30.0f) speed = 30.0f; // clamp
-    float factor = speed / 30.0f;     // 0..1
-
-    float torqueMag = mSteerTorque * s * factor;
-
-    // Torque alrededor de Y (giro yaw)
-    PxVec3 torque(0.0f, torqueMag, 0.0f);
-    mChassis->addTorque(torque, PxForceMode::eFORCE);
+		if (steer_ != 0.0f) {
+			PxVec3 up = t.q.rotate(PxVec3(0, 1, 0));
+			actor_->addTorque(up * (-steer_) * turnTorque_);
+		}
+	}
 }

@@ -1,56 +1,50 @@
-// Car.h
 #pragma once
-
 #include <PxPhysicsAPI.h>
-#include "RenderUtils.hpp"
+#include "RenderUtils.hpp" 
 
 using namespace physx;
 
 class Car
 {
 public:
-    struct Wheel
-    {
-        PxVec3 localPos;     // posición de la rueda en espacio local del chasis
-        float  restLength;   // longitud de reposo del muelle
-        float  maxLength;    // longitud máxima del raycast
-        float  stiffness;    // constante elástica (k)
-        float  damping;      // amortiguación
-        float  radius;       // radio visual / "rueda" (para ajustar la distancia)
-    };
+	Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVec3& halfExtents);
+	~Car();
 
-    Car(PxPhysics* physics,
-        PxScene* scene,
-        const PxTransform& pose,
-        const PxVec3& halfExtents);
+	void update(float dt);
 
-    ~Car();
+	void setThrottle(float v);
+	void setSteer(float v);
 
-    void update(float dt);
+	PxRigidDynamic* getActor() const { return actor_; }
 
-    PxRigidDynamic* getActor() { return mChassis; }
+	physx::PxTransform GetTransform() const
+	{
+		// Asumo que tu actor rígido se llama mVehicleActor, mActor, o similar.
+		// Cambia 'mActor' por el nombre real de tu variable PxRigidDynamic* en la clase Car.
+		if (actor_)
+			return actor_->getGlobalPose();
 
-    // Controles
-    void setThrottle(float t) { mThrottle = t; }  // -1..1
-    void setSteer(float s) { mSteer = s; }     // -1..1  (izq/der)
+		return physx::PxTransform(physx::PxIdentity);
+	}
 
 private:
-    PxPhysics* mPhysics = nullptr;
-    PxScene* mScene = nullptr;
-    PxRigidDynamic* mChassis = nullptr;
+	PxPhysics* physics_;
+	PxScene* scene_;
+	PxRigidDynamic* actor_;
+	RenderItem* renderItem_;
 
-    RenderItem* mChassisRender = nullptr;
+	float throttle_;
+	float steer_;
 
-    Wheel mWheels[4];
+	float moveForce_;
+	float turnTorque_;
 
-    float mEngineForce = 8000.0f;   // fuerza máxima del motor
-    float mThrottle = 0.0f;      // entrada [-1,1]
+	// Suspensión
+	float suspensionRestLength_;
+	float springStrength_;
+	float springDamper_;
+	float carHalfHeight_;
 
-    // Steering
-    float mSteer = 0.0f;      // entrada [-1,1]
-    float mSteerTorque = 5000.0f;   // magnitud del torque para girar
-
-    void addSuspensionForce(Wheel& w, float dt);
-    void addEngineForce(float dt);
-    void addSteerTorque(float dt);
+	// Debug
+	int frameCounter_; // Para controlar los prints
 };

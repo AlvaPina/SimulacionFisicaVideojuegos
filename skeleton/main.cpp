@@ -290,6 +290,35 @@ void stepPhysics(bool interactive, double t)
 		if (generator) generator->update(t);
 
 	if (gCar) gCar->update(static_cast<float>(t));
+
+	if (gCar) gCar->update(static_cast<float>(t));
+
+	// CÁMARA SIGUE AL COCHE
+	if (interactive && gCar)
+	{
+		// 1. Obtener la posición del coche
+		PxTransform carPose = gCar->GetTransform();
+
+		// 2. Calcular posición deseada de la cámara
+		// Offset: 15 metros detrás, 5 arriba.
+		// Si la cámara mira al revés, cambia 15.0f por -15.0f
+		PxVec3 offset(0.0f, 6.0f, 15.0f);
+
+		// Convertir offset local a mundo (para que rote con el coche)
+		PxVec3 camPos = carPose.transform(offset);
+
+		// 3. Calcular vector dirección (Cámara mira al coche)
+		// Destino (Coche) - Origen (Cámara)
+		PxVec3 camDir = (carPose.p - camPos).getNormalized();
+
+		// 4. Aplicar cambios
+		Camera* cam = GetCamera();
+		if (cam)
+		{
+			cam->setEye(camPos);
+			cam->setDir(camDir);
+		}
+	}
 }
 
 // Function to clean data
