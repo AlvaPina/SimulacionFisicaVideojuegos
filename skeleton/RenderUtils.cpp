@@ -101,18 +101,29 @@ void renderCallback()
 	for (auto it = gRenderItems.begin(); it != gRenderItems.end(); ++it)
 	{
 		const RenderItem* obj = (*it);
-		auto objTransform = obj->transform;
-		if (!objTransform)
+
+		// Si tiene transform explícito (no actor), úsalo tal cual
+		if (obj->transform)
 		{
-			auto actor = obj->actor;
-			if (actor)
-			{
-				renderShape(*obj->shape, actor->getGlobalPose(), obj->color);
-				continue;
-			}
+			renderShape(*obj->shape, *obj->transform, obj->color);
+			continue;
 		}
-		renderShape(*obj->shape, objTransform ? *objTransform : physx::PxTransform(PxIdentity), obj->color);
+
+		// Si tiene actor, combinamos pose del actor + localPose de la shape
+		if (obj->actor)
+		{
+			PxTransform actorPose = obj->actor->getGlobalPose();
+			PxTransform localPose = obj->shape->getLocalPose();
+			PxTransform worldPose = actorPose * localPose;
+
+			renderShape(*obj->shape, worldPose, obj->color);
+			continue;
+		}
+
+		// Fallback (por si acaso)
+		renderShape(*obj->shape, physx::PxTransform(PxIdentity), obj->color);
 	}
+
 
 	//PxScene* scene;
 	//PxGetPhysics().getScenes(&scene, 1);

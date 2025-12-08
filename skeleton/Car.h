@@ -23,11 +23,17 @@ public:
 		return physx::PxTransform(physx::PxIdentity);
 	}
 
+	physx::PxTransform GetGunTransform() const;
+
 private:
 	physx::PxPhysics* physics_;
 	physx::PxScene* scene_;
 	physx::PxRigidDynamic* actor_;
 	RenderItem* renderItem_;
+
+	// Arma
+	physx::PxShape* gunShape_ = nullptr;
+	RenderItem* gunRenderItem_ = nullptr;
 
 	// Parámetros del coche
 	float throttle_; // -1 a 1

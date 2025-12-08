@@ -291,8 +291,6 @@ void stepPhysics(bool interactive, double t)
 
 	if (gCar) gCar->update(static_cast<float>(t));
 
-	if (gCar) gCar->update(static_cast<float>(t));
-
 	// CÁMARA SIGUE AL COCHE
 	if (interactive && gCar)
 	{
@@ -402,6 +400,25 @@ void keyPress(unsigned char key, const PxTransform& camera)
 		gParticles.push_back(particle);
 		break;
 	}
+	case 'F': { // disparar desde el arma del coche
+		if (gCar) {
+			// 1. Transform del arma (global)
+			PxTransform gunPose = gCar->GetGunTransform();
+
+			// 2. Dirección adelante del arma (igual que el coche: (0,0,-1) local)
+			Vector3D forward = gunPose.q.rotate(PxVec3(0, 0, -1));
+
+			// 3. Posición de salida = posición del cubo-arma
+			Vector3D iniPos(gunPose.p.x, gunPose.p.y, gunPose.p.z);
+
+			// 4. Velocidad inicial
+			float iniVel = 30.0f; // más rápido que la B, si quieres
+			Particle* particle = new Particle(iniPos, forward.scalarMul(iniVel), 1.0f);
+
+			gParticles.push_back(particle);
+		}
+		break;
+	}
 	case 'E': {
 		if (gExplosionFG) {
 			gExplosionFG->resetTime();
@@ -411,16 +428,16 @@ void keyPress(unsigned char key, const PxTransform& camera)
 		break;
 	}
 	case 'W':    // acelerar
-		if (gCar) gCar->setThrottle(3.0f);
+		if (gCar) gCar->setThrottle(6.0f);
 		break;
 	case 'S':    // marcha atrás / freno
-		if (gCar) gCar->setThrottle(-3.0f);
+		if (gCar) gCar->setThrottle(-6.0f);
 		break;
 	case 'A':    // girar izquierda
-		if (gCar) gCar->setSteer(-10.0f);
+		if (gCar) gCar->setSteer(-20.0f);
 		break;
 	case 'D':    // girar derecha
-		if (gCar) gCar->setSteer(10.0f);
+		if (gCar) gCar->setSteer(20.0f);
 		break;
 	case ' ': {
 		break;

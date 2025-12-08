@@ -44,8 +44,6 @@ Car::Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVe
 	moveForce_ = 10000.0f;
 	turnTorque_ = 5000.0f;
 
-	// === CORRECCIÓN IMPORTANTE ===
-	// Eliminamos el +10.0f que causaba que el coche saliera volando.
 	carHalfHeight_ = halfExtents.y;
 
 	// Suspensión: Longitud del "rayo" invisible bajo el coche
@@ -64,7 +62,7 @@ Car::Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVe
 	PxShape* shapeVisual = physics_->createShape(PxBoxGeometry(halfExtents), *mat);
 	gShapes.push_back(shapeVisual);
 
-	// 2. FORMA FÍSICA (Chasis ultra fino)
+	// 2. FORMA FÍSICA (Chasis)
 	PxVec3 colliderDim = halfExtents;
 	colliderDim.y *= 0.25f; // Muy plano para no chocar fácil con el suelo
 	PxShape* shapeCollider = physics_->createShape(PxBoxGeometry(colliderDim), *mat);
@@ -74,6 +72,30 @@ Car::Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVe
 
 	PxRigidBodyExt::updateMassAndInertia(*actor_, 1500.0f);
 
+	// =================== Cubo arma ===================
+	PxVec3 gunHalfExtents(0.2f, 0.4f, 0.6f);
+
+	// IMPORTANTE: exclusive shape (no physics_->createShape)
+#include <extensions/PxRigidActorExt.h> // asegúrate de tener este include arriba del cpp
+
+	gunShape_ = PxRigidActorExt::createExclusiveShape(
+		*actor_,
+		PxBoxGeometry(gunHalfExtents),
+		*mat
+	);
+	gShapes.push_back(gunShape_);
+
+	// Offset local respecto al centro del coche.
+	// Tu forward de movimiento es (0,0,-1), o sea que "delante" es -Z:
+	PxVec3 const gunOffset(
+		0.0f,                        // centrado en X
+		halfExtents.y * 0.3f,        // un poco elevado
+		-halfExtents.z - gunHalfExtents.z  // delante en -Z
+	);
+	gunShape_->setLocalPose(PxTransform(gunOffset));
+
+	// =================== resto igual ===================
+
 	// Bajar el centro de masas para evitar vuelcos
 	actor_->setCMassLocalPose(PxTransform(PxVec3(0.0f, -halfExtents.y, 0.0f)));
 
@@ -82,18 +104,33 @@ Car::Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVe
 
 	scene_->addActor(*actor_);
 
+	// Render del chasis
 	renderItem_ = new RenderItem(shapeVisual, actor_, PxVec4(0.8f, 0.2f, 0.2f, 1.0f));
 	gRenderItems.push_back(renderItem_);
+
+	// Render del cubo arma
+	gunRenderItem_ = new RenderItem(gunShape_, actor_, PxVec4(0.0f, 0.0f, 1.0f, 1.0f)); // azul
+	gRenderItems.push_back(gunRenderItem_);
 }
 
 Car::~Car()
 {
-	// La limpieza de actor y shapes se suele hacer en el cleanup global,
-	// pero aquí podrías limpiar punteros específicos si fuera necesario.
+	
 }
 
 void Car::setThrottle(float v) { throttle_ = v; }
 void Car::setSteer(float v) { steer_ = v; }
+
+physx::PxTransform Car::GetGunTransform() const
+{
+	if (!actor_ || !gunShape_)
+		return GetTransform(); // fallback
+
+	PxTransform chassisPose = actor_->getGlobalPose();
+	PxTransform localGunPose = gunShape_->getLocalPose();
+
+	return chassisPose * localGunPose;
+}
 
 void Car::update(float dt)
 {
