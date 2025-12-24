@@ -23,6 +23,7 @@ public:
     ~ParticleGenerator();
 
     void setActive(bool value);
+    void setEmitting(bool value) { isEmitting_ = value; }
     void update(double deltaTime); // segundos
 
     // setters sencillos
@@ -31,6 +32,10 @@ public:
     void setLifeTime(double seconds) { lifeTime_ = seconds; }
     void setSpawnPosition(const Vector3D& p) { spawnPos_ = p; }
     void setEmitRate(int perSec) { emitRate_ = perSec > 0 ? perSec : 1; }
+    void setOrientation(const Vector3D& d) { facingDir_ = d.normalized(); }
+    void setParticleRadius(float r) { particleRadius_ = (r > 0.001f) ? r : 0.001f; }
+    void setParticleColor(const physx::PxVec4& c) { particleColor_ = c; }
+    void setMass(float m) { mass_ = m; }
 
     // Fuerzas
     void setForceRegistry(ForceRegistry* r) { registry_ = r; }
@@ -41,6 +46,7 @@ public:
 private:
     // Estado y parámetros
     bool      isActive_ = true;
+    bool      isEmitting_ = true;
     int       emitRate_ = 10; // partículas/seg
     Vector2D  spreadAngle_; // (yaw,pitch) en grados (rangos)
     Vector3D  facingDir_; // dirección base 3D
@@ -55,11 +61,14 @@ private:
     double    gaussianFactor_ = 2.0; // sigma velocidad (m/s)
     double    lifeTime_ = 5.0; // s
     Vector3D  spawnPos_ = Vector3D(0, 0, 0);
+    float     particleRadius_ = 1.0f;
+    physx::PxVec4 particleColor_ = physx::PxVec4(1.f, 1.f, 1.f, 1.f);
+    float mass_ = 1.0f;
 
     // RNG
     std::mt19937 rng_;
     std::normal_distribution<double>      speedNormal_;
-    std::uniform_real_distribution<double> uniform01_{ 0.0, 1.0 }; // ∈[0,1)
+    std::uniform_real_distribution<double> uniform01_{ 0.0, 1.0 }; // [0,1)
 
 	// Fuerzas
     ForceRegistry* registry_ = nullptr;

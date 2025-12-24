@@ -66,7 +66,9 @@ void ParticleGenerator::update(double dtSeconds)
         }
     }
 
-    // 2) Emisión a tasa fija
+    if (!isEmitting_) return;
+
+    // Emisión a tasa fija
     elapsed_ += dtSeconds;
     const double period = 1.0 / static_cast<double>(emitRate_);
 
@@ -109,7 +111,7 @@ void ParticleGenerator::emitOne()
     Vector3D vel = dir.scalarMul(speed);
 
     // Crear partícula
-    Particle* p = new Particle(spawnPos_, vel, /*mass*/1.0);
+    Particle* p = new Particle(spawnPos_, vel, mass_, particleRadius_, particleColor_);
 
     particles_.push_back(p);
     lifeLeft_.push_back(lifeTime_);

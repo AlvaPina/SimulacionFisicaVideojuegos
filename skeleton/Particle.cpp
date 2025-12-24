@@ -1,14 +1,16 @@
 #include "Particle.h"
 #include <iostream>
 
-Particle::Particle(Vector3D iniPos, Vector3D iniVel, double iniMass)
+Particle::Particle(Vector3D iniPos, Vector3D iniVel, double iniMass, float radius, const PxVec4& color)
 {
     _vel = iniVel;
     _tr = new PxTransform(physx::PxVec3(iniPos.getX(), iniPos.getY(), iniPos.getZ()));
     _aceleration = Vector3D(0,0,0);
     _mass = iniMass;
+    _radius = radius;
+    _color = color;
     // Render Item
-    _renderItem = new RenderItem(CreateShape(PxSphereGeometry(1)), _tr, PxVec4(0 / 255.f, 0 / 255.f, 255 / 255.f, 1));
+    _renderItem = new RenderItem(CreateShape(PxSphereGeometry(_radius)), _tr, _color);
 }
 
 Particle::~Particle() {

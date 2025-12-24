@@ -8,6 +8,9 @@ using namespace physx;
 // Importamos las listas globales para poder añadir el coche al render
 extern std::vector<RenderItem*> gRenderItems;
 extern std::vector<physx::PxShape*> gShapes;
+extern physx::PxMaterial* gMaterial;
+extern ForceRegistry* gRegistry;
+
 
 // =========================================================================
 // FILTRO DE RAYCAST (Para que el rayo no choque con el propio chasis)
@@ -55,8 +58,8 @@ Car::Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVe
 
 	actor_ = physics_->createRigidDynamic(pose);
 
-	// Material sin fricción para el collider (evitar enganchones si toca suelo)
-	PxMaterial* mat = physics_->createMaterial(0.0f, 0.0f, 0.0f);
+	// Material
+	PxMaterial* mat = gMaterial;
 
 	// 1. FORMA VISUAL
 	PxShape* shapeVisual = physics_->createShape(PxBoxGeometry(halfExtents), *mat);
@@ -94,6 +97,71 @@ Car::Car(PxPhysics* physics, PxScene* scene, const PxTransform& pose, const PxVe
 	);
 	gunShape_->setLocalPose(PxTransform(gunOffset));
 
+	// =================== TURBO: 2 emisores detrás ===================
+	registry_ = gRegistry;
+
+	// offsets locales: atrás es +Z porque tu forward de movimiento es -Z
+	// un poco separados en X, a la altura del “escape”
+	turboLeftLocalOffset_ = PxVec3(-halfExtents.x * 0.6f, -halfExtents.y * 0.1f, +halfExtents.z + 0.5f);
+	turboRightLocalOffset_ = PxVec3(+halfExtents.x * 0.6f, -halfExtents.y * 0.1f, +halfExtents.z + 0.5f);
+
+	// gravedad para el humo/partículas (opcional)
+	turboGravity_ = new GravityForceGenerator(Vector3D(0.0, -9.8, 0.0));
+
+	// orientación inicial (local): hacia atrás del coche => +Z local
+	Vector3D turboFacingLocal(0, 0, 1);
+
+	// spread pequeñito
+	Vector2D spread(12, 12);
+
+	// posición inicial (se corregirá cada frame en update)
+	PxTransform poseNow = actor_->getGlobalPose();
+	PxVec3 leftWorld = poseNow.transform(turboLeftLocalOffset_);
+	PxVec3 rightWorld = poseNow.transform(turboRightLocalOffset_);
+
+	turboLeft_ = new ParticleGenerator(
+		/*particlesPerSecond*/ 60,
+		spread,
+		turboFacingLocal,
+		Vector3D(leftWorld.x, leftWorld.y, leftWorld.z)
+	);
+	turboRight_ = new ParticleGenerator(
+		60,
+		spread,
+		turboFacingLocal,
+		Vector3D(rightWorld.x, rightWorld.y, rightWorld.z)
+	);
+
+	// config
+	turboLeft_->setForceRegistry(registry_);
+	turboRight_->setForceRegistry(registry_);
+
+	turboLeft_->setAverageSpeed(45.0f);
+	turboRight_->setAverageSpeed(45.0f);
+
+	turboLeft_->setGaussianFactor(2.0);
+	turboRight_->setGaussianFactor(2.0);
+
+	turboLeft_->setLifeTime(0.6);
+	turboRight_->setLifeTime(0.6);
+
+	turboLeft_->setParticleColor(PxVec4(1.0f, 0.45f, 0.0f, 1.0f));
+	turboRight_->setParticleColor(PxVec4(1.0f, 0.45f, 0.0f, 1.0f));
+
+	turboLeft_->setParticleRadius(0.5f);
+	turboRight_->setParticleRadius(0.5f);
+
+	// fuerzas del turbo
+	turboLeft_->addGlobalForce(turboGravity_);
+	turboRight_->addGlobalForce(turboGravity_);
+
+	// arranca activado pero sin emitir
+	turboLeft_->setActive(true);
+	turboRight_->setActive(true);
+	turboLeft_->setEmitting(false);
+	turboRight_->setEmitting(false);
+
+
 	// =================== resto igual ===================
 
 	// Bajar el centro de masas para evitar vuelcos
@@ -121,6 +189,14 @@ Car::~Car()
 void Car::setThrottle(float v) { throttle_ = v; }
 void Car::setSteer(float v) { steer_ = v; }
 
+void Car::setTurbo(bool on)
+{
+    turboActive_ = on;
+
+    if (turboLeft_)  turboLeft_->setEmitting(on);
+    if (turboRight_) turboRight_->setEmitting(on);
+}
+
 physx::PxTransform Car::GetGunTransform() const
 {
 	if (!actor_ || !gunShape_)
@@ -138,10 +214,33 @@ void Car::update(float dt)
 
 	actor_->wakeUp(); // Asegurar que PhysX no duerma el coche
 
+	PxTransform t = actor_->getGlobalPose();
+
+	// Turbo
+	if (turboLeft_ && turboRight_)
+	{
+		// Posición de cada emisor (local -> mundo)
+		PxVec3 leftWorld = t.transform(turboLeftLocalOffset_);
+		PxVec3 rightWorld = t.transform(turboRightLocalOffset_);
+
+		turboLeft_->setSpawnPosition(Vector3D(leftWorld.x, leftWorld.y, leftWorld.z));
+		turboRight_->setSpawnPosition(Vector3D(rightWorld.x, rightWorld.y, rightWorld.z));
+
+		// Orientación: atrás del coche (tu forward es -Z, así que atrás es +Z local)
+		PxVec3 backWorldPx = t.q.rotate(PxVec3(0, 0, 1));
+		Vector3D backWorld(backWorldPx.x, backWorldPx.y, backWorldPx.z);
+
+		turboLeft_->setOrientation(backWorld);
+		turboRight_->setOrientation(backWorld);
+
+		// Emitir/integrar partículas del turbo (si están apagados, update() retorna)
+		turboLeft_->update(dt);
+		turboRight_->update(dt);
+	}
+
 	frameCounter_++;
 	bool doDebug = (frameCounter_ % 60 == 0);
 
-	PxTransform t = actor_->getGlobalPose();
 	PxVec3 origin = t.p;
 
 	// Disparamos el rayo hacia ABAJO relativo al coche

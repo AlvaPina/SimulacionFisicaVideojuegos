@@ -24,6 +24,9 @@
 #include "Car.h"
 #include "Vector2D.h"
 #include "Vector3D.h"
+#include "Bullet.h"
+#include "MapGenerator.h"
+
 std::string display_text = "Hola Mundo";
 
 
@@ -48,6 +51,7 @@ std::vector<Particle*> gParticles;
 std::vector<ParticleGenerator*> gParticleGenerators;
 std::vector<physx::PxShape*> gShapes;
 std::vector<RenderItem*> gRenderItems;
+std::vector<Bullet*> gBullets;
 
 ForceRegistry* gRegistry = nullptr;
 
@@ -62,6 +66,7 @@ SpringForceGenerator* gCubeSpringFG = nullptr;
 RigidBody* gCubeAnchorRB = nullptr;
 
 Car* gCar = nullptr;
+MapGenerator* gMap = nullptr;
 
 
 // Initialize physics engine
@@ -243,24 +248,24 @@ void initPhysics(bool interactive)
 
 	gCubeSpringFG = new SpringForceGenerator(kCube, restCube, gCubeAnchorRB);
 
-	// =================== Suelo estático ===================
-	PxRigidStatic* groundActor =
-		gPhysics->createRigidStatic(PxTransform(PxVec3(0.0f, -2.0f, 0.0f)));
-
-	PxShape* groundShape = CreateShape(PxBoxGeometry(50.0f, 1.0f, 50.0f));
-	groundActor->attachShape(*groundShape);
-	gScene->addActor(*groundActor);
-
-	// Render del suelo
-	RenderItem* groundItem = new RenderItem(groundShape, groundActor,
-		PxVec4(0.3f, 0.3f, 0.3f, 1.0f));
-	gRenderItems.push_back(groundItem);
-
 	// =================== Coche ===================
 	PxTransform carPose(PxVec3(0.0f, 2.0f, -20.0f));
 	PxVec3 carHalfExtents(2.0f, 0.5f, 4.0f);   // ancho, alto, largo
 
 	gCar = new Car(gPhysics, gScene, carPose, carHalfExtents);
+
+	// =================== Mapa ===================
+	MapGenerator::Settings s;
+	s.halfExtents = PxVec3(12.0f, 1.0f, 12.0f);  // ancho=24, grosor=2, largo=24
+	s.slopeAngleDeg = 12.0f;
+	s.seed = 42;
+
+	gMap = new MapGenerator(gPhysics, gScene, gMaterial, s);
+
+	// Start pose: centro del primer tile
+	// OJO: tu coche empieza en z=-20. Pon pista cerca.
+	PxTransform start(PxVec3(0.0f, -2.0f, -20.0f), PxQuat(PxIdentity));
+	gMap->generate(/*numTiles*/ 40, start);
 }
 
 
@@ -278,6 +283,23 @@ void stepPhysics(bool interactive, double t)
 	if (gCubeSpringFG && gCubeRB)
 		gCubeSpringFG->apply(*gCubeRB, t);      // muelle del cubo PhysX
 
+	if (gCar) gCar->update(static_cast<float>(t));
+
+	// bullets
+	for (size_t i = 0; i < gBullets.size(); /*manual*/) {
+		Bullet* b = gBullets[i];
+		if (b) b->update(static_cast<float>(t));
+
+		if (!b || !b->isAlive()) {
+			delete b;
+			gBullets[i] = gBullets.back();
+			gBullets.pop_back();
+		}
+		else {
+			++i;
+		}
+	}
+
 	// 2) Simulación PhysX
 	gScene->simulate(t);
 	gScene->fetchResults(true);
@@ -289,7 +311,6 @@ void stepPhysics(bool interactive, double t)
 	for (ParticleGenerator* generator : gParticleGenerators)
 		if (generator) generator->update(t);
 
-	if (gCar) gCar->update(static_cast<float>(t));
 
 	// CÁMARA SIGUE AL COCHE
 	if (interactive && gCar)
@@ -355,8 +376,7 @@ void cleanupPhysics(bool interactive)
 	// Release RenderItems (Deregister + delete)
 	for (RenderItem* item : gRenderItems) {
 		if (item) {
-			DeregisterRenderItem(item);
-			delete item;
+			item->release();
 		}
 	}
 	gRenderItems.clear();
@@ -378,6 +398,11 @@ void cleanupPhysics(bool interactive)
 		delete gCar;
 		gCar = nullptr;
 	}
+
+	for (Bullet* b : gBullets) {
+		delete b;
+	}
+	gBullets.clear();
 }
 
 // Function called when a key is pressed
@@ -400,22 +425,32 @@ void keyPress(unsigned char key, const PxTransform& camera)
 		gParticles.push_back(particle);
 		break;
 	}
-	case 'F': { // disparar desde el arma del coche
-		if (gCar) {
-			// 1. Transform del arma (global)
+	case 'F': {
+		if (gCar && gScene && gPhysics) {
 			PxTransform gunPose = gCar->GetGunTransform();
 
-			// 2. Dirección adelante del arma (igual que el coche: (0,0,-1) local)
-			Vector3D forward = gunPose.q.rotate(PxVec3(0, 0, -1));
+			// forward del arma: local (0,0,-1)
+			PxVec3 forward = gunPose.q.rotate(PxVec3(0, 0, -1));
+			forward.normalize();
 
-			// 3. Posición de salida = posición del cubo-arma
-			Vector3D iniPos(gunPose.p.x, gunPose.p.y, gunPose.p.z);
+			// punto de spawn un pelín delante para que no colisione con el arma
+			PxVec3 spawnPos = gunPose.p + forward * 1.0f;
 
-			// 4. Velocidad inicial
-			float iniVel = 30.0f; // más rápido que la B, si quieres
-			Particle* particle = new Particle(iniPos, forward.scalarMul(iniVel), 1.0f);
+			// velocidad inicial
+			float bulletSpeed = 60.0f;
+			PxVec3 vel = forward * bulletSpeed;
 
-			gParticles.push_back(particle);
+			Bullet* b = new Bullet(
+				gPhysics,
+				gScene,
+				PxTransform(spawnPos, gunPose.q),
+				vel,
+				/*radius*/ 0.35f,
+				/*mass*/   2.0f,
+				/*color*/  PxVec4(1.0f, 0.85f, 0.1f, 1.0f) // amarillo
+			);
+
+			gBullets.push_back(b);
 		}
 		break;
 	}
@@ -425,6 +460,10 @@ void keyPress(unsigned char key, const PxTransform& camera)
 			gExplosionFG->setActive(true);
 			std::cout << "Explosión activada\n";
 		}
+		break;
+	}
+	case ' ': {
+		if (gCar) gCar->setTurbo(true);
 		break;
 	}
 	case 'W':    // acelerar
@@ -439,9 +478,6 @@ void keyPress(unsigned char key, const PxTransform& camera)
 	case 'D':    // girar derecha
 		if (gCar) gCar->setSteer(20.0f);
 		break;
-	case ' ': {
-		break;
-	}
 	default:
 		break;
 	}
@@ -453,6 +489,10 @@ void keyRelease(unsigned char key, const PxTransform& camera)
 
 	switch (toupper(key))
 	{
+	case ' ': {
+		if (gCar) gCar->setTurbo(false);
+		break;
+	}
 	case 'W':
 	case 'S':
 		if (gCar) gCar->setThrottle(0.0f);
@@ -462,6 +502,7 @@ void keyRelease(unsigned char key, const PxTransform& camera)
 	case 'D':
 		if (gCar) gCar->setSteer(0.0f);
 		break;
+
 
 	default:
 		break;

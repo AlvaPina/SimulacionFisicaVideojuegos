@@ -12,7 +12,8 @@ using namespace physx;
 class Particle : public RigidBody
 {
 public:
-	Particle(Vector3D iniPos, Vector3D iniVel, double iniMass);
+	Particle(Vector3D iniPos, Vector3D iniVel, double iniMass,
+		float radius = 1.0f, const physx::PxVec4& color = physx::PxVec4(0, 0, 1, 1));
 	~Particle();
 
 	void integrate(double t, int type = 0);
@@ -32,6 +33,9 @@ private:
 
 	double _damping = 0.00001f;
 	double _mass = 1.0f;
+
+	float _radius = 1.0f;
+	PxVec4 _color = PxVec4(0.f, 0.f, 1.f, 1.f);
 
 	void clearForceAccumulator();
 };

@@ -27,6 +27,8 @@
     <ClCompile Include="RigidBodyPhysX.cpp" />
     <ClCompile Include="RigidBodyPhysXStatic.cpp" />
     <ClCompile Include="Car.cpp" />
+    <ClCompile Include="Bullet.cpp" />
+    <ClCompile Include="MapGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="core.hpp" />
@@ -55,6 +57,8 @@
     <ClInclude Include="RigidBodyPhysX.h" />
     <ClInclude Include="RigidBodyPhysXStatic.h" />
     <ClInclude Include="Car.h" />
+    <ClInclude Include="Bullet.h" />
+    <ClInclude Include="MapGenerator.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Render">
