@@ -1,5 +1,6 @@
 ﻿#include "ParticleGenerator.h"
 #include "Particle.h"
+#include "ForceGenerator.h"
 #include <algorithm>
 #include <cmath>
 #include <chrono>

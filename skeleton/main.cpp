@@ -68,6 +68,33 @@ RigidBody* gCubeAnchorRB = nullptr;
 Car* gCar = nullptr;
 MapGenerator* gMap = nullptr;
 
+// =================== Bullet presets (Q cambia el preset) ===================
+struct BulletPreset
+{
+	float radius = 0.35f;
+	float mass = 2.0f;
+	physx::PxVec4 color = physx::PxVec4(1, 1, 1, 1);
+	const char* name = "default";
+};
+
+static std::vector<BulletPreset> gBulletPresets = {
+	{ 0.20f,  0.5f, physx::PxVec4(1.0f, 0.85f, 0.10f, 1.0f), "Ligera (pequeña)" },  // amarilla
+	{ 0.35f,  2.0f, physx::PxVec4(1.0f, 0.45f, 0.00f, 1.0f), "Normal (naranja)" },  // naranja
+	{ 0.60f, 10.0f, physx::PxVec4(0.20f, 0.80f, 1.00f, 1.0f), "Pesada (grande)" }   // azul
+};
+
+static int gBulletPresetIndex = 0;
+
+static const BulletPreset& CurrentBulletPreset()
+{
+	if (gBulletPresets.empty()) {
+		static BulletPreset fallback;
+		return fallback;
+	}
+	gBulletPresetIndex = gBulletPresetIndex % (int)gBulletPresets.size();
+	return gBulletPresets[gBulletPresetIndex];
+}
+
 
 // Initialize physics engine
 void initPhysics(bool interactive)
@@ -425,29 +452,43 @@ void keyPress(unsigned char key, const PxTransform& camera)
 		gParticles.push_back(particle);
 		break;
 	}
+	case 'Q': {
+		if (!gBulletPresets.empty()) {
+			gBulletPresetIndex = (gBulletPresetIndex + 1) % (int)gBulletPresets.size();
+			const auto& p = CurrentBulletPreset();
+			std::cout << "[Bullet] Preset: " << p.name
+				<< " | radius=" << p.radius
+				<< " | mass=" << p.mass
+				<< " | color=(" << p.color.x << "," << p.color.y << "," << p.color.z << "," << p.color.w << ")"
+				<< std::endl;
+
+			// Si quieres mostrarlo en pantalla:
+			display_text = std::string("Bullet: ") + p.name;
+		}
+		break;
+	}
 	case 'F': {
 		if (gCar && gScene && gPhysics) {
 			PxTransform gunPose = gCar->GetGunTransform();
 
-			// forward del arma: local (0,0,-1)
 			PxVec3 forward = gunPose.q.rotate(PxVec3(0, 0, -1));
 			forward.normalize();
 
-			// punto de spawn un pelín delante para que no colisione con el arma
 			PxVec3 spawnPos = gunPose.p + forward * 1.0f;
 
-			// velocidad inicial
 			float bulletSpeed = 60.0f;
 			PxVec3 vel = forward * bulletSpeed;
+
+			const BulletPreset& preset = CurrentBulletPreset();
 
 			Bullet* b = new Bullet(
 				gPhysics,
 				gScene,
 				PxTransform(spawnPos, gunPose.q),
 				vel,
-				/*radius*/ 0.35f,
-				/*mass*/   2.0f,
-				/*color*/  PxVec4(1.0f, 0.85f, 0.1f, 1.0f) // amarillo
+				/*radius*/ preset.radius,
+				/*mass*/   preset.mass,
+				/*color*/  preset.color
 			);
 
 			gBullets.push_back(b);
